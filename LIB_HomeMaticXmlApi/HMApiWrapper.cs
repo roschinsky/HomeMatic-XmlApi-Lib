@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Net;
-using System.Threading.Tasks;
 using System.Xml;
 
 namespace TRoschinsky.Lib.HomeMaticXmlApi
@@ -13,8 +11,9 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         private string xmlApiDefaultPath = "/addons/xmlapi";
 
         private string xmlApiMethodDevice = "devicelist";
-        private string xmlApiMethodStatusAll = "statelist";
-        private string xmlApiMethodStatusSingle = "state";
+        private string xmlApiMethodStateAll = "statelist";
+        private string xmlApiMethodStateSingle = "state";
+        private string xmlApiMethodVariable = "sysvarlist";
 
         private Uri HMUrl;
 
@@ -25,12 +24,42 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         public HMApiWrapper(Uri homeMaticUri)
         {
             HMUrl = homeMaticUri;
-            Initialize();
+            Initialize(false);
         }
 
-        private void Initialize()
+        public HMApiWrapper(Uri homeMaticUri, bool initializeWithStates)
+        {
+            HMUrl = homeMaticUri;
+            Initialize(initializeWithStates);
+        }
+
+
+        private void Initialize(bool fullInit)
         {
             devices = GetDevices();
+            
+            if(fullInit)
+            {
+                GetStates();
+            }
+        }
+
+        private void GetStates()
+        {
+            XmlDocument xmlStates = GetApiData(xmlApiMethodStateAll);
+
+            foreach (XmlElement devElement in xmlStates.DocumentElement.ChildNodes)
+            {
+                int devIseId = int.Parse(devElement.GetAttribute("ise_id"));
+                HMDevice device = devices.First(d => devIseId == d.InternalId);
+
+                foreach (XmlElement chanElement in devElement.ChildNodes)
+                {
+                    int chanIseId = int.Parse(devElement.GetAttribute("ise_id"));
+                    HMDeviceChannel channel = device.Channels.First(c => chanIseId == c.InternalId);
+                    channel.Value = chanElement.GetAttribute("ise_id");
+                }
+            }
         }
 
         private List<HMDevice> GetDevices()
@@ -90,24 +119,23 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             int result = -1;
             bool searchChannels = address.Contains(":");
 
-            foreach(HMDevice device in devices)
+            HMDevice device = null;
+            HMDeviceChannel channel = null;
+
+            device = devices.First(d => address.StartsWith(d.Address));
+
+            if(searchChannels && device != null)
             {
-                if(address.Equals(device.Address))
+                channel = device.Channels.First(c => c.Address == address);
+            }
+
+            if(device != null && !String.IsNullOrEmpty(device.Address))
+            {
+                result = device.InternalId;
+
+                if(channel != null && !String.IsNullOrEmpty(channel.Address))
                 {
-                    result = device.InternalId;
-                    break;
-                }
-                
-                if(searchChannels)
-                {
-                    foreach(HMDeviceChannel channel in device.Channels)
-                    {
-                        if (address.Equals(channel.Address))
-                        {
-                            result = device.InternalId;
-                            break;
-                        }
-                    }
+                    result = channel.InternalId;
                 }
             }
 
