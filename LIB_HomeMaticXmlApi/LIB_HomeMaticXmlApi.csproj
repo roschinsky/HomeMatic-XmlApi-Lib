@@ -42,6 +42,7 @@
     <Compile Include="HMApiWrapper.cs" />
     <Compile Include="HMDevice.cs" />
     <Compile Include="HMDeviceChannel.cs" />
+    <Compile Include="HMDeviceDataPoint.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

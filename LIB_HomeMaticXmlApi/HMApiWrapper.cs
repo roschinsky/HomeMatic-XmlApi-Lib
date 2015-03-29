@@ -48,16 +48,53 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             XmlDocument xmlStates = GetApiData(xmlApiMethodStateAll);
 
+            // iterating devices
             foreach (XmlElement devElement in xmlStates.DocumentElement.ChildNodes)
             {
-                int devIseId = int.Parse(devElement.GetAttribute("ise_id"));
-                HMDevice device = devices.First(d => devIseId == d.InternalId);
-
-                foreach (XmlElement chanElement in devElement.ChildNodes)
+                try
                 {
-                    int chanIseId = int.Parse(devElement.GetAttribute("ise_id"));
-                    HMDeviceChannel channel = device.Channels.First(c => chanIseId == c.InternalId);
-                    channel.Value = chanElement.GetAttribute("ise_id");
+                    int devIseId = int.Parse(devElement.GetAttribute("ise_id"));
+                    // looking for existing device
+                    HMDevice device = devices.First(d => devIseId == d.InternalId);
+
+                    // iterating channels
+                    foreach (XmlElement chanElement in devElement.ChildNodes)
+                    {
+                        try
+                        {
+                            int chanIseId = int.Parse(chanElement.GetAttribute("ise_id"));
+                            // looking for existing channel
+                            HMDeviceChannel channel = device.Channels.First(c => chanIseId == c.InternalId);
+
+                            if (channel != null)
+                            {
+                                // clear all data points to create new
+                                channel.DataPoints.Clear();
+
+                                // iterating data points
+                                foreach (XmlElement pointElement in chanElement.ChildNodes)
+                                {
+                                    HMDeviceDataPoint dataPoint = new HMDeviceDataPoint()
+                                    {
+                                        InternalId = int.Parse(pointElement.GetAttribute("ise_id")),
+                                        Type = pointElement.GetAttribute("type"),
+                                        LastUpdateTimeStamp = long.Parse(pointElement.GetAttribute("timestamp")),
+                                        Value = pointElement.GetAttribute("value")
+                                    };
+
+                                    channel.AddDataPoint(dataPoint);
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            // well, maybe there was an channel that is not listed in device list
+                        }
+                    }
+                }
+                catch
+                {
+                    // well, maybe there was an device that is not listed in device list
                 }
             }
         }
