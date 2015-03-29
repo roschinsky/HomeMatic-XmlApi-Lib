@@ -17,35 +17,70 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
         private Uri HMUrl;
 
+        private List<HMSystemVariable> variables = new List<HMSystemVariable>();
+        public List<HMSystemVariable> Variables { get { return variables; } }
+
         private List<HMDevice> devices = new List<HMDevice>();
-        public List<HMDevice> Devices { get { return devices;} }
+        public List<HMDevice> Devices { get { return devices; } }
 
 
+        /// <summary>
+        /// Basic constructor
+        /// </summary>
+        /// <param name="homeMaticUri">Uri to HomeMatic</param>
         public HMApiWrapper(Uri homeMaticUri)
         {
             HMUrl = homeMaticUri;
-            Initialize(false);
+            Initialize(false, false);
         }
 
-        public HMApiWrapper(Uri homeMaticUri, bool initializeWithStates)
+        /// <summary>
+        /// Advanced constructor
+        /// </summary>
+        /// <param name="homeMaticUri">Uri to HomeMatic</param>
+        /// <param name="initializeWithStates">Set to true if you want to initialize the wrapper with states; operation takes longer but you are able to access states immediately</param>
+        /// <param name="initializeWithVariables">Set to true if you want to initialize the wrapper with HomeMatic system variables</param>
+        public HMApiWrapper(Uri homeMaticUri, bool initializeWithStates, bool initializeWithVariables)
         {
             HMUrl = homeMaticUri;
-            Initialize(initializeWithStates);
+            Initialize(initializeWithStates, initializeWithVariables);
         }
 
-
-        private void Initialize(bool fullInit)
+        /// <summary>
+        /// Method to initialize the wrapper; gets all available devices and, if needed, states of devices
+        /// </summary>
+        /// <param name="fullInit">Update all states initially</param>
+        /// <param name="variablesInit">Obtain all system variables initially</param>
+        private void Initialize(bool fullInit, bool variablesInit)
         {
             devices = GetDevices();
             
             if(fullInit)
             {
-                GetStates();
+                UpdateStates();
+            }
+
+            if(variablesInit)
+            {
+                UpdateVariables();
             }
         }
 
-        private void GetStates()
+        /// <summary>
+        /// Updates the global list of system variables
+        /// </summary>
+        private void UpdateVariables()
         {
+            // Todo: Implement request of system variables
+            throw new NotImplementedException("Implement request of system variables");
+        }
+
+        /// <summary>
+        /// Updates the global device list including their channels and data point or state data
+        /// </summary>
+        private void UpdateStates()
+        {
+            // requesting states list from HomeMatic XmlApi
             XmlDocument xmlStates = GetApiData(xmlApiMethodStateAll);
 
             // iterating devices
@@ -89,22 +124,30 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                         catch
                         {
                             // well, maybe there was an channel that is not listed in device list
+                            // no problem, we'll just ignore it at this point
                         }
                     }
                 }
                 catch
                 {
                     // well, maybe there was an device that is not listed in device list
+                    // no problem, we'll just ignore it at this point
                 }
             }
         }
 
+        /// <summary>
+        /// Gets all devices including their channels but without any data point or state data
+        /// </summary>
+        /// <returns>List containing devices with channels</returns>
         private List<HMDevice> GetDevices()
         {
             List<HMDevice> result = new List<HMDevice>();
 
+            // requesting devices list from HomeMatic XmlApi
             XmlDocument xmlDevices = GetApiData(xmlApiMethodDevice);
 
+            // iterating devices
             foreach(XmlElement devElement in xmlDevices.DocumentElement.ChildNodes)
             {
                 HMDevice device = new HMDevice()
@@ -115,6 +158,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     DeviceType = devElement.GetAttribute("device_type")
                 };
 
+                // iterating channels
                 foreach (XmlElement chanElement in devElement.ChildNodes)
                 {
                     HMDeviceChannel channel = new HMDeviceChannel()
@@ -133,6 +177,11 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             return result;
         }
 
+        /// <summary>
+        /// Request an XML based API document from HomeMatic Xml Api
+        /// </summary>
+        /// <param name="apiMethod"></param>
+        /// <returns>XML document containing the requested data</returns>
         private XmlDocument GetApiData(string apiMethod)
         {
             XmlDocument result = new XmlDocument();
@@ -151,6 +200,11 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             return null;
         }
 
+        /// <summary>
+        /// Gets the internal ID for devices or channels by given HomeMatic device or channel address
+        /// </summary>
+        /// <param name="address">HomeMatic device or channel address</param>
+        /// <returns>Internal ID (iseId)</returns>
         private int GetInternalIdByAddress(string address)
         {
             int result = -1;

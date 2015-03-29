@@ -30,7 +30,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 Uri hmcUri = new Uri(txtConnect.Text);
                 if (hmc == null)
                 {
-                    hmc = new HMApiWrapper(hmcUri, true);
+                    hmc = new HMApiWrapper(hmcUri, true, false);
                 }
 
                 if(hmc != null && hmc.Devices.Count > 0)
