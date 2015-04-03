@@ -2,7 +2,7 @@
 
 namespace TRoschinsky.Lib.HomeMaticXmlApi
 {
-    public class HMSystemVariable
+    public class HMSystemMessage
     {
         public int InternalId { get; set; }
         public string Name { get; set; }

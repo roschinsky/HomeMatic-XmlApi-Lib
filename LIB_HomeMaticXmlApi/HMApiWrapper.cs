@@ -13,12 +13,16 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         private string xmlApiMethodDevice = "devicelist";
         private string xmlApiMethodStateAll = "statelist";
         private string xmlApiMethodStateSingle = "state";
+        private string xmlApiMethodStateSet = "statechange";
         private string xmlApiMethodVariable = "sysvarlist";
 
         private Uri HMUrl;
 
         private List<HMSystemVariable> variables = new List<HMSystemVariable>();
         public List<HMSystemVariable> Variables { get { return variables; } }
+
+        private List<HMSystemMessage> messages = new List<HMSystemMessage>();
+        public List<HMSystemMessage> Messages { get { return messages; } }
 
         private List<HMDevice> devices = new List<HMDevice>();
         public List<HMDevice> Devices { get { return devices; } }
@@ -69,7 +73,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <summary>
         /// Updates the global list of system variables
         /// </summary>
-        private void UpdateVariables()
+        public void UpdateVariables()
         {
             // Todo: Implement request of system variables
             throw new NotImplementedException("Implement request of system variables");
@@ -78,7 +82,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <summary>
         /// Updates the global device list including their channels and data point or state data
         /// </summary>
-        private void UpdateStates()
+        public void UpdateStates()
         {
             // requesting states list from HomeMatic XmlApi
             XmlDocument xmlStates = GetApiData(xmlApiMethodStateAll);
@@ -231,6 +235,16 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             }
 
             return result;
+        }
+
+        public static DateTime TimeStampToDateTime(long timeStamp)
+        {
+            if (timeStamp > 1)
+            {
+                return (new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Local)).AddSeconds(timeStamp);
+            }
+
+            return DateTime.MinValue;
         }
     }
 }
