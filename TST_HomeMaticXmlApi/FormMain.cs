@@ -33,24 +33,53 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     hmc = new HMApiWrapper(hmcUri, true, false);
                 }
 
-                if(hmc != null && hmc.Devices.Count > 0)
+                treeView.Nodes.Clear();
+
+                if (hmc != null && hmc.Devices.Count > 0)
                 {
-                    treeView.Nodes.Clear();
-                    TreeNode devNode = null;
+                    TreeNode devNode = new TreeNode("Devices");
 
-                    foreach(HMDevice device in hmc.Devices)
+                    foreach (HMDevice device in hmc.Devices)
                     {
-                        devNode = new TreeNode(device.ToString());
-                        foreach(HMDeviceChannel channel in device.Channels)
+                        TreeNode devNodeSub = devNode.Nodes.Add(device.ToString());
+                        foreach (HMDeviceChannel channel in device.Channels)
                         {
-                            devNode.Nodes.Add(channel.ToString());
+                            devNodeSub.Nodes.Add(channel.ToString());
                         }
-
-                        devNode.Collapse();
-                        treeView.Nodes.Add(devNode);
                     }
+
+                    treeView.Nodes.Add(devNode);
                 }
-                else
+
+                hmc.UpdateVariables();
+
+                if (hmc != null && hmc.Variables.Count > 0)
+                {
+                    TreeNode varNode = new TreeNode("Variables");
+
+                    foreach (HMSystemVariable variable in hmc.Variables)
+                    {
+                        varNode.Nodes.Add(variable.ToString());
+                    }
+                    
+                    treeView.Nodes.Add(varNode);
+                }
+
+                hmc.UpdateMessages();
+
+                if (hmc != null && hmc.Messages.Count > 0)
+                {
+                    TreeNode msgNode = new TreeNode("Messages");
+
+                    foreach (HMSystemMessage message in hmc.Messages)
+                    {
+                        msgNode.Nodes.Add(message.ToString());
+                    }
+                    
+                    treeView.Nodes.Add(msgNode);
+                }
+
+                if(treeView.Nodes.Count == 0)
                 {
                     MessageBox.Show("Connect to HMC seems to be okay but there are no devices.", "No devices found...", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }

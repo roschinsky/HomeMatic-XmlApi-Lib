@@ -15,6 +15,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         private string xmlApiMethodStateSingle = "state";
         private string xmlApiMethodStateSet = "statechange";
         private string xmlApiMethodVariable = "sysvarlist";
+        private string xmlApiMethodMessage = "systemNotification";
 
         private Uri HMUrl;
 
@@ -75,8 +76,51 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// </summary>
         public void UpdateVariables()
         {
-            // Todo: Implement request of system variables
-            throw new NotImplementedException("Implement request of system variables");
+            // requesting system variables list from HomeMatic XmlApi
+            XmlDocument xmlVariables = GetApiData(xmlApiMethodVariable);
+
+            // clear current collection
+            variables.Clear();
+
+            // iterating variables
+            foreach (XmlElement varElement in xmlVariables.DocumentElement.ChildNodes)
+            {
+                HMSystemVariable variable = new HMSystemVariable()
+                {
+                    InternalId = int.Parse(varElement.GetAttribute("ise_id")),
+                    Name = varElement.GetAttribute("name"),
+                    Type = varElement.GetAttribute("type"),
+                    Value = varElement.GetAttribute("value"),
+                    LastUpdateTimeStamp = long.Parse(varElement.GetAttribute("timestamp"))
+                };
+
+                variables.Add(variable);
+            }
+        }
+
+        /// <summary>
+        /// Updates the global list of system messages
+        /// </summary>
+        public void UpdateMessages()
+        {
+            // requesting system messages list from HomeMatic XmlApi
+            XmlDocument xmlMessages = GetApiData(xmlApiMethodMessage);
+
+            // clear current collection
+            messages.Clear();
+
+            // iterating messages
+            foreach (XmlElement msgElement in xmlMessages.DocumentElement.ChildNodes)
+            {
+                HMSystemMessage message = new HMSystemMessage()
+                {
+                    InternalId = int.Parse(msgElement.GetAttribute("ise_id")),
+                    Type = msgElement.GetAttribute("type"),
+                    OccuredOnTimeStamp = long.Parse(msgElement.GetAttribute("timestamp"))
+                };
+
+                messages.Add(message);
+            }
         }
 
         /// <summary>
@@ -237,6 +281,13 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             return result;
         }
 
+
+
+        /// <summary>
+        /// Converts UNIX timestamp to valid DateTime
+        /// </summary>
+        /// <param name="timeStamp">UNIX timestamp</param>
+        /// <returns>DateTime object representing the given UNIX timestamp</returns>
         public static DateTime TimeStampToDateTime(long timeStamp)
         {
             if (timeStamp > 1)
