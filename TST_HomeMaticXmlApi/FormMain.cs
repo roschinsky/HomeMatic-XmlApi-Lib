@@ -33,9 +33,9 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     hmc = new HMApiWrapper(hmcUri, true, false);
                 }
 
-                hmc.SetupHighPrioDevice("LEQ0501253:1");
-                hmc.SetupHighPrioDevice("LEQ0422834");
-                hmc.SetupHighPrioDevice("LEQ1447097:2");
+                hmc.FastUpdateDeviceSetup("LEQ0502263:1");
+                hmc.FastUpdateDeviceSetup("LEQ0412714");
+                hmc.FastUpdateDeviceSetup("LEQ1468091:1");
 
                 RefreshTreeView();
             }

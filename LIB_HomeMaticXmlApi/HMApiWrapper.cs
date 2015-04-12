@@ -19,8 +19,8 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
         private Uri HMUrl;
 
-        private List<string> highPrioUpdates = new List<string>();
-        public List<string> HighPrioUpdates { get { return highPrioUpdates; } }
+        private List<string> fastUpdateDevices = new List<string>();
+        public List<string> FastUpdateDevices { get { return fastUpdateDevices; } }
 
         private List<HMSystemVariable> variables = new List<HMSystemVariable>();
         public List<HMSystemVariable> Variables { get { return variables; } }
@@ -128,11 +128,11 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
         /// <summary>
         /// Triggers update of the global device list including their channels and data point or state data
-        /// <param name="justUpdateHighPrioDevices">Tells the method to just run an short update of an important set of devices</param>
+        /// <param name="justQueryForFastUpdateDevices">Tells the method to just run an short update of an important set of devices</param>
         /// </summary>
-        public void UpdateStates(bool justUpdateHighPrioDevices)
+        public void UpdateStates(bool justQueryForFastUpdateDevices)
         {
-            if(justUpdateHighPrioDevices)
+            if(justQueryForFastUpdateDevices)
             {
                 UpdateStates();
                 return;
@@ -148,24 +148,33 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         }
 
         /// <summary>
-        /// Triggers update of the global device list just for highly priorized devices including their channels and data point or state data
+        /// Triggers update of the global device list just for devices listed in fast update devices 
+        /// collection, including their channels and data point or state data. If no fast update devices 
+        /// are defined, we do a regular states update.
         /// </summary>
         private void UpdateStates()
         {
             string queryIds = String.Empty;
 
-            foreach(string address in highPrioUpdates)
+            foreach(string address in fastUpdateDevices)
             {
                 queryIds += GetInternalIdByAddress(address) + ",";
             }
 
-            // requesting states list from HomeMatic XmlApi
-            XmlDocument xmlStates = GetApiData(xmlApiMethodStateSingle, "device_id", queryIds);
-
-            if (xmlStates != null)
+            if (!String.IsNullOrWhiteSpace(queryIds))
             {
-                UpdateStates(xmlStates);
+                // requesting states list from HomeMatic XmlApi
+                XmlDocument xmlStates = GetApiData(xmlApiMethodStateSingle, "device_id", queryIds);
+
+                if (xmlStates != null)
+                {
+                    UpdateStates(xmlStates);
+                    return;
+                }
             }
+
+            // do a regular states update if not run into single update branch above
+            UpdateStates(false);
         }
 
         /// <summary>
@@ -294,7 +303,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         }
 
         /// <summary>
-        /// Request an XML based API document from HomeMatic Xml Api
+        /// Request an XML based API document from HomeMatic Xml Api with one parameter
         /// </summary>
         /// <param name="apiMethod">Name of the method to call</param>
         /// <param name="parameter">Name of the parameter to attach</param>
@@ -308,6 +317,33 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             {
                 WebClient apiClient = new WebClient();
                 result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi?{3}={4}", HMUrl, xmlApiDefaultPath, apiMethod, parameter, parameterValue)));
+
+                if (result != null && result.DocumentElement != null)
+                {
+                    return result;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Request an XML based API document from HomeMatic Xml Api with two parameters
+        /// </summary>
+        /// <param name="apiMethod">Name of the method to call</param>
+        /// <param name="parameter1">Name of the parameter #1 to attach</param>
+        /// <param name="parameterValue1">Value of the parameter #1 to attach</param>
+        /// <param name="parameter2">Name of the parameter #2 to attach</param>
+        /// <param name="parameterValue2">Value of the parameter #2 to attach</param>
+        /// <returns>XML document containing the requested data</returns>
+        private XmlDocument GetApiData(string apiMethod, string parameter1, string parameterValue1, string parameter2, string parameterValue2)
+        {
+            XmlDocument result = new XmlDocument(); 
+
+            if (HMUrl != null)
+            {
+                WebClient apiClient = new WebClient();
+                result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi?{3}={4}&{5}={6}", HMUrl, xmlApiDefaultPath, apiMethod, parameter1, parameterValue1, parameter2, parameterValue2)));
 
                 if (result != null && result.DocumentElement != null)
                 {
@@ -364,56 +400,101 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// </summary>
         /// <param name="address">HomeMatic device or channel address</param>
         /// <returns>Device</returns>
-        private HMDevice GetDeviceByAddress(string address)
+        public HMDevice GetDeviceByAddress(string address)
         {
-            return devices.First(d => address.StartsWith(d.Address));
-        }
-
-        /// <summary>
-        /// Gets the device by given HomeMatic device or channel address
-        /// </summary>
-        /// <param name="address">HomeMatic device or channel address</param>
-        /// <returns>Device</returns>
-        private HMDeviceChannel GetChannelByAddress(string address)
-        {
-            if (address.Contains(":"))
+            try
             {
-                HMDevice device = GetDeviceByAddress(address);
-                if(device != null && device.Channels.Count > 0)
+                if (address.Contains(":"))
                 {
-                    return device.Channels.First(c => c.Address == address);
+                    return devices.First(d => d.Address == (address.Substring(0, address.IndexOf(":"))));
+                }
+                else
+                {
+                    return devices.First(d => d.Address == address);
                 }
             }
-
-            return null;
+            catch(Exception)
+            {
+                return null;
+            }
         }
 
         /// <summary>
-        /// Adds devices by address to the list for high priorized updates, which will be performed faster 
+        /// Gets the device channel by given HomeMatic channel address
+        /// </summary>
+        /// <param name="address">HomeMatic channel address (ends with channel number separated by ':')</param>
+        /// <returns>Channel</returns>
+        public HMDeviceChannel GetChannelByAddress(string address)
+        {
+            try
+            {
+                if (address.Contains(":"))
+                {
+                    HMDevice device = GetDeviceByAddress(address);
+                    if (device != null && device.Channels.Count > 0)
+                    {
+                        return device.Channels.First(c => c.Address == address);
+                    }
+                }
+
+                return null;
+            }
+            catch(Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets the device channels datapoint by given HomeMatic device or channel address and data value type name
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="valueType">The name of the value type (STATE, LOWBAT, MOTION, etc.)</param>
+        /// <returns>Data point</returns>
+        public HMDeviceDataPoint GetDataByAddress(string address, string valueTypeName)
+        {
+            try
+            {
+                HMDeviceChannel channel = GetChannelByAddress(address);
+                if (channel != null && channel.DataPoints.ContainsKey(valueTypeName))
+                {
+                    return channel.DataPoints[valueTypeName];
+                }
+
+                return null;
+            }
+            catch(Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Adds devices by address to the list for single updates, which will be performed faster 
         /// by requesting them by single call than getting all status values 
         /// </summary>
         /// <param name="address"></param>
-        public void SetupHighPrioDevice(string address)
+        public void FastUpdateDeviceSetup(string address)
         {
             if (!String.IsNullOrWhiteSpace(address))
             {
                 if (address.Contains(":"))
                 {
-                    highPrioUpdates.Add(address.Substring(0, address.IndexOf(":")));
+                    fastUpdateDevices.Add(address.Substring(0, address.IndexOf(":")));
                 }
                 else
                 {
-                    highPrioUpdates.Add(address);
+                    fastUpdateDevices.Add(address);
                 }
             }
         }
 
         /// <summary>
-        /// Clears the list for high priorized updates
+        /// Clears the list for fast update devices
         /// </summary>
-        public void ClearHighPrioDevices()
+        public void FastUpdateDevicesClear()
         {
-            highPrioUpdates.Clear();
+            fastUpdateDevices.Clear();
         }
 
         #endregion
