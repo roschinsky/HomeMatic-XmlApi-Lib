@@ -237,6 +237,44 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         }
 
         /// <summary>
+        /// Sets the state of a data point
+        /// </summary>
+        /// <param name="InternalId"></param>
+        /// <returns>Result of operation; true if everything is okay</returns>
+        public bool SetState(int InternalId, string Value)
+        {
+            try
+            {
+                if(InternalId <= 0 || String.IsNullOrWhiteSpace(Value))
+                {
+                    return false;
+                }
+
+                string internalId = InternalId.ToString();
+
+                // requesting states list from HomeMatic XmlApi
+                XmlDocument xmlSetStates = GetApiData(xmlApiMethodStateSet, "ise_id", internalId, "new_value", Value);
+
+                // checking results
+                XmlNode resultNode = xmlSetStates.DocumentElement.FirstChild;
+                {
+                    if(resultNode.Name == "changed" && resultNode.Attributes["id"].Value == internalId && resultNode.Attributes["new_value"].Value == Value)
+                    {
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+            }
+            catch 
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Gets all devices including their channels but without any data point or state data
         /// </summary>
         /// <returns>List containing devices with channels</returns>

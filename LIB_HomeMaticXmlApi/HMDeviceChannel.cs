@@ -20,6 +20,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             get { return String.IsNullOrEmpty(defaultDataType) ? default1stDataTypeName : defaultDataType; }
             set { defaultDataType = value; } 
         }
+        public HMDeviceDataPoint PrimaryDataPoint { get { return GetPrimaryDataPoint(); } }
         public string PrimaryValue { get { return GetPrimaryDataPoint().Value; } }
         public DateTime PrimaryLastUpdate { get { return GetPrimaryDataPoint().LastUpdate; } }
         private Dictionary<string, HMDeviceDataPoint> dataPoints = new Dictionary<string, HMDeviceDataPoint>();
