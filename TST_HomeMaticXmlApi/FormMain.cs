@@ -30,7 +30,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 if (hmc == null)
                 {
                     Uri hmcUri = new Uri(txtConnect.Text);
-                    hmc = new HMApiWrapper(hmcUri, true, false);
+                    hmc = new HMApiWrapper(hmcUri, false, false);
                 }
 
                 hmc.FastUpdateDeviceSetup("LEQ0502263:1");
@@ -58,6 +58,8 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             treeView.Nodes.Clear();
 
+            hmc.UpdateStates(false);
+
             if (hmc != null && hmc.Devices.Count > 0)
             {
                 TreeNode devNode = new TreeNode("Devices");
@@ -67,7 +69,9 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     TreeNode devNodeSub = devNode.Nodes.Add(device.ToString());
                     foreach (HMDeviceChannel channel in device.Channels)
                     {
-                        devNodeSub.Nodes.Add(channel.ToString());
+                        TreeNode channelNode = new TreeNode(channel.ToString());
+                        channelNode.Tag = channel;
+                        devNodeSub.Nodes.Add(channelNode);
                     }
                 }
 
@@ -105,6 +109,55 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             if (treeView.Nodes.Count == 0)
             {
                 MessageBox.Show("Connect to HMC seems to be okay but there are no devices.", "No devices found...", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void treeView_DoubleClick(object sender, EventArgs e)
+        {
+            try
+            {
+                HMDeviceChannel channel = treeView.SelectedNode.Tag as HMDeviceChannel;
+                if(channel != null)
+                {
+                    DialogSetDataPoint dataPointDialog = new DialogSetDataPoint(channel);
+                    dataPointDialog.FormClosing += DataPointDialog_FormClosing;
+                    dataPointDialog.ShowDialog();
+                }
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error obtaining channel...", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void DataPointDialog_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            try
+            {
+                if(e.Cancel)
+                {
+                    return;
+                }
+                else
+                {
+                    DialogSetDataPoint dataPointDialog = sender as DialogSetDataPoint;
+                    if(dataPointDialog != null && dataPointDialog.ValueWasSet)
+                    {
+                        if(hmc.SetState(dataPointDialog.InternalIdToSet, dataPointDialog.ValueToSet))
+                        {
+                            MessageBox.Show("Operation result: SUCCESS", "Operating channel...", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        else
+                        {
+                            MessageBox.Show("Operation result: FAILURE", "Operating channel...", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error operating channel...", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
