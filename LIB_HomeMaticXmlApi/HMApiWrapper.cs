@@ -237,7 +237,19 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         }
 
         /// <summary>
-        /// Sets the state of a data point
+        /// Sets the state of a data point by address of the data point
+        /// </summary>
+        /// <param name="Address"></param>
+        /// <param name="Value"></param>
+        /// <returns></returns>
+        public bool SetState(string Address, string Value)
+        {
+            // TODO: Test it because obviously we're gonna have trouble to identify the correct data point; think it'll just hit the right channel.
+            return SetState(GetInternalIdByAddress(Address), Value);
+        }
+
+        /// <summary>
+        /// Sets the state of a data point by internal ID of the data point
         /// </summary>
         /// <param name="InternalId"></param>
         /// <returns>Result of operation; true if everything is okay</returns>
