@@ -408,7 +408,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// Gets the internal ID for devices or channels by given HomeMatic device or channel address
         /// </summary>
         /// <param name="address">HomeMatic device or channel address</param>
-        /// <returns>Internal ID (iseId)</returns>
+        /// <returns>Internal ID (iseId); if it is -1 we wasn't able to find a matching device or channel</returns>
         private int GetInternalIdByAddress(string address)
         {
             int result = -1;

@@ -8,7 +8,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
     {
         public int InternalId { get; set; }
         public string Type { get; set; }
-        public string Value { get; set; }
+        public object Value { get; set; }
         public long LastUpdateTimeStamp { get; set; }
         public DateTime LastUpdate { get { return HMApiWrapper.TimeStampToDateTime(LastUpdateTimeStamp); } }
 

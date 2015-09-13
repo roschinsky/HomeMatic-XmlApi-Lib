@@ -21,7 +21,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             set { defaultDataType = value; } 
         }
         public HMDeviceDataPoint PrimaryDataPoint { get { return GetPrimaryDataPoint(); } }
-        public string PrimaryValue { get { return GetPrimaryDataPoint().Value; } }
+        public object PrimaryValue { get { return GetPrimaryDataPoint().Value; } }
         public DateTime PrimaryLastUpdate { get { return GetPrimaryDataPoint().LastUpdate; } }
         private Dictionary<string, HMDeviceDataPoint> dataPoints = new Dictionary<string, HMDeviceDataPoint>();
         public Dictionary<string, HMDeviceDataPoint> DataPoints { get { return dataPoints; } }
