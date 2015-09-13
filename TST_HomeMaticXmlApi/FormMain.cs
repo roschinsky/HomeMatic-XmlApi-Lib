@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -6,7 +7,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 {
     public partial class FormMain : Form
     {
-        private HMApiWrapper hmc;
+        private HMApiWrapper hmcProxy;
 
         public FormMain()
         {
@@ -27,15 +28,14 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             try
             {
-                if (hmc == null)
+                if (hmcProxy == null)
                 {
-                    Uri hmcUri = new Uri(txtConnect.Text);
-                    hmc = new HMApiWrapper(hmcUri, false, false);
+                    hmcProxy = new HMApiWrapper(new Uri(txtConnect.Text), false, false);
                 }
 
-                hmc.FastUpdateDeviceSetup("LEQ0502263:1");
-                hmc.FastUpdateDeviceSetup("LEQ0412714");
-                hmc.FastUpdateDeviceSetup("LEQ1468091:1");
+                hmcProxy.FastUpdateDeviceSetup("LEQ0502263:1");
+                hmcProxy.FastUpdateDeviceSetup("LEQ0412714");
+                hmcProxy.FastUpdateDeviceSetup("LEQ1468091:1");
 
                 RefreshTreeView();
             }
@@ -47,9 +47,9 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
         private void btnRequestHighPrioUpdate_Click(object sender, EventArgs e)
         {
-            if (hmc != null)
+            if (hmcProxy != null)
             {
-                hmc.UpdateStates(true);
+                hmcProxy.UpdateStates(true);
                 RefreshTreeView();
             }
         }
@@ -58,19 +58,25 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             treeView.Nodes.Clear();
 
-            hmc.UpdateStates(false);
+            hmcProxy.UpdateStates(false);
 
-            if (hmc != null && hmc.Devices.Count > 0)
+            if (hmcProxy != null && hmcProxy.Devices.Count > 0)
             {
                 TreeNode devNode = new TreeNode("Devices");
 
-                foreach (HMDevice device in hmc.Devices)
+                foreach (HMDevice device in hmcProxy.Devices)
                 {
                     TreeNode devNodeSub = devNode.Nodes.Add(device.ToString());
                     foreach (HMDeviceChannel channel in device.Channels)
                     {
                         TreeNode channelNode = new TreeNode(channel.ToString());
                         channelNode.Tag = channel;
+
+                        foreach(KeyValuePair<string, HMDeviceDataPoint> datapoint in channel.DataPoints)
+                        {
+                            channelNode.Nodes.Add(datapoint.Value.ToString());
+                        }
+
                         devNodeSub.Nodes.Add(channelNode);
                     }
                 }
@@ -78,13 +84,13 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 treeView.Nodes.Add(devNode);
             }
 
-            hmc.UpdateVariables();
+            hmcProxy.UpdateVariables();
 
-            if (hmc != null && hmc.Variables.Count > 0)
+            if (hmcProxy != null && hmcProxy.Variables.Count > 0)
             {
                 TreeNode varNode = new TreeNode("Variables");
 
-                foreach (HMSystemVariable variable in hmc.Variables)
+                foreach (HMSystemVariable variable in hmcProxy.Variables)
                 {
                     varNode.Nodes.Add(variable.ToString());
                 }
@@ -92,13 +98,13 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 treeView.Nodes.Add(varNode);
             }
 
-            hmc.UpdateMessages();
+            hmcProxy.UpdateMessages();
 
-            if (hmc != null && hmc.Messages.Count > 0)
+            if (hmcProxy != null && hmcProxy.Messages.Count > 0)
             {
                 TreeNode msgNode = new TreeNode("Messages");
 
-                foreach (HMSystemMessage message in hmc.Messages)
+                foreach (HMSystemMessage message in hmcProxy.Messages)
                 {
                     msgNode.Nodes.Add(message.ToString());
                 }
@@ -144,7 +150,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     DialogSetDataPoint dataPointDialog = sender as DialogSetDataPoint;
                     if(dataPointDialog != null && dataPointDialog.ValueWasSet)
                     {
-                        if(hmc.SetState(dataPointDialog.InternalIdToSet, dataPointDialog.ValueToSet))
+                        if(hmcProxy.SetState(dataPointDialog.InternalIdToSet, dataPointDialog.ValueToSet))
                         {
                             MessageBox.Show("Operation result: SUCCESS", "Operating channel...", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
@@ -158,6 +164,20 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Error operating channel...", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void linkLabelGitHub_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
+        {
+            try { System.Diagnostics.Process.Start(linkLabelGitHub.Text); }
+            catch { }
+        }
+
+        private void txtConnect_KeyUp(object sender, KeyEventArgs e)
+        {
+            if(e.KeyCode == Keys.Enter)
+            {
+                btnConnect_Click(sender, null);
             }
         }
     }

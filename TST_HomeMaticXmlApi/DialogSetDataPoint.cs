@@ -15,7 +15,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             InitializeComponent();
             Text += " " + InternalIdToSet;
             lblDataPointName.Text = channel.ToString();
-            txtValue.Text = channel.PrimaryValue;
+            txtValue.Text = String.Concat(channel.PrimaryValue);
         }
 
         private void btnSet_Click(object sender, EventArgs e)
