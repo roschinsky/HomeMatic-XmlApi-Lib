@@ -33,7 +33,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
         public override string ToString()
         {
-            return String.Format("C:{0} >> {1} - Value '{2}' @ {3}", Address, Name, PrimaryValue, PrimaryLastUpdate);
+            return String.Format("CH:{0} >> {1} - Value '{2}' @ {3}", Address, Name, PrimaryValue, PrimaryLastUpdate);
         }
 
         private HMDeviceDataPoint GetPrimaryDataPoint()

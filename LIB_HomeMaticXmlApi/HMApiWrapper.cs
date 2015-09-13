@@ -214,7 +214,9 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                                         InternalId = int.Parse(pointElement.GetAttribute("ise_id")),
                                         Type = pointElement.GetAttribute("type"),
                                         LastUpdateTimeStamp = long.Parse(pointElement.GetAttribute("timestamp")),
-                                        Value = pointElement.GetAttribute("value")
+                                        ValueString = pointElement.GetAttribute("value"),
+                                        ValueType = pointElement.GetAttribute("valuetype"),
+                                        ValueUnit = pointElement.GetAttribute("valueunit")
                                     };
 
                                     channel.AddDataPoint(dataPoint.Type, dataPoint);

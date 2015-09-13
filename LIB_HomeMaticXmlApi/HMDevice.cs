@@ -19,7 +19,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
         public override string ToString()
         {
-            return String.Format("D:{0} >> {1} ({2} Ch.)", Address, Name, channels.Count);
+            return String.Format("DE:{0} >> {1} ({2} Ch.)", Address, Name, channels.Count);
         }
     }
 }
