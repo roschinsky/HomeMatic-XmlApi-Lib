@@ -244,7 +244,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <param name="Address"></param>
         /// <param name="Value"></param>
         /// <returns></returns>
-        public bool SetState(string Address, string Value)
+        public bool SetState(string Address, object Value)
         {
             // TODO: Test it because obviously we're gonna have trouble to identify the correct data point; think it'll just hit the right channel.
             return SetState(GetInternalIdByAddress(Address), Value);
@@ -255,24 +255,25 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// </summary>
         /// <param name="InternalId"></param>
         /// <returns>Result of operation; true if everything is okay</returns>
-        public bool SetState(int InternalId, string Value)
+        public bool SetState(int InternalId, object Value)
         {
             try
             {
-                if(InternalId <= 0 || String.IsNullOrWhiteSpace(Value))
+                if(InternalId <= 0 || Value == null)
                 {
                     return false;
                 }
 
                 string internalId = InternalId.ToString();
+                string stringRepresentationOfValue = Convert.ToString(Value).ToLower();
 
                 // requesting states list from HomeMatic XmlApi
-                XmlDocument xmlSetStates = GetApiData(xmlApiMethodStateSet, "ise_id", internalId, "new_value", Value);
+                XmlDocument xmlSetStates = GetApiData(xmlApiMethodStateSet, "ise_id", internalId, "new_value", stringRepresentationOfValue);
 
                 // checking results
                 XmlNode resultNode = xmlSetStates.DocumentElement.FirstChild;
                 {
-                    if(resultNode.Name == "changed" && resultNode.Attributes["id"].Value == internalId && resultNode.Attributes["new_value"].Value == Value)
+                    if(resultNode.Name == "changed" && resultNode.Attributes["id"].Value == internalId && resultNode.Attributes["new_value"].Value == stringRepresentationOfValue)
                     {
                         return true;
                     }

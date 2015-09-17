@@ -43,7 +43,7 @@
             this.treeView.Location = new System.Drawing.Point(13, 42);
             this.treeView.Name = "treeView";
             this.treeView.Size = new System.Drawing.Size(322, 180);
-            this.treeView.TabIndex = 4;
+            this.treeView.TabIndex = 0;
             this.treeView.DoubleClick += new System.EventHandler(this.treeView_DoubleClick);
             // 
             // btnConnect
