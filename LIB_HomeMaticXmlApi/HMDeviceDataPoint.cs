@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace TRoschinsky.Lib.HomeMaticXmlApi
 {
@@ -17,7 +18,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
         private object Typedvalue()
         {
-            object returnValue = null;
+            object returnValue;
 
             // fail over to originating string from XML due to missing value type
             if (String.IsNullOrWhiteSpace(ValueType))
@@ -28,7 +29,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             // when typing is active due to existing value type we return null if value string is empty
             if (String.IsNullOrWhiteSpace(ValueString))
             {
-                return returnValue;
+                return null;
             }
 
             // now starting in conversion by given type
@@ -36,15 +37,18 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             {
                 int valueTypeCode = int.Parse(ValueType);
 
-                switch(valueTypeCode)
+                NumberFormatInfo numFormat = new NumberFormatInfo();
+                numFormat.NumberDecimalSeparator = ".";
+
+                switch (valueTypeCode)
                 {
                     case 16:
-                    case 6:
                         returnValue = int.Parse(ValueString);
                         break;
 
                     case 4:
-                        returnValue = double.Parse(ValueString, System.Globalization.NumberStyles.AllowDecimalPoint);
+                    case 6:
+                        returnValue = double.Parse(ValueString, numFormat);
                         break;
 
                     case 2:

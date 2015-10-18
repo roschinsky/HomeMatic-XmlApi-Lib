@@ -117,6 +117,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             {
                 HMSystemMessage message = new HMSystemMessage()
                 {
+                    Name = msgElement.GetAttribute("name"),
                     InternalId = int.Parse(msgElement.GetAttribute("ise_id")),
                     Type = msgElement.GetAttribute("type"),
                     OccuredOnTimeStamp = long.Parse(msgElement.GetAttribute("timestamp"))
@@ -144,6 +145,37 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             if (xmlStates != null)
             {
                 UpdateStates(xmlStates);
+            }
+        }
+
+        /// <summary>
+        /// Triggers update of the global device list just for a single device by given address 
+        /// including its channels and data point or state data.
+        /// </summary>
+        public void UpdateStateByAddress(string address)
+        {
+            int iseId = 0;
+            iseId = GetInternalIdByAddress(address);
+
+            UpdateStateById(iseId);
+        }
+
+        /// <summary>
+        /// Triggers update of the global device list just for a single device by given ise-id 
+        /// including its channels and data point or state data.
+        /// </summary>
+        private void UpdateStateById(int iseId)
+        {
+            if (iseId > 0)
+            {
+                // requesting states list from HomeMatic XmlApi
+                XmlDocument xmlStates = GetApiData(xmlApiMethodStateSingle, "device_id", iseId.ToString());
+
+                if (xmlStates != null)
+                {
+                    UpdateStates(xmlStates);
+                    return;
+                }
             }
         }
 
@@ -275,6 +307,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 {
                     if(resultNode.Name == "changed" && resultNode.Attributes["id"].Value == internalId && resultNode.Attributes["new_value"].Value == stringRepresentationOfValue)
                     {
+                        UpdateStateById(int.Parse(internalId));
                         return true;
                     }
                     else
