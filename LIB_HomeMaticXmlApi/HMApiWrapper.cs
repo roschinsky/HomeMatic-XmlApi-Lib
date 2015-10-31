@@ -8,7 +8,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 {
     public class HMApiWrapper
     {
-        private string xmlApiDefaultPath = "/addons/xmlapi";
+        private string xmlApiDefaultPath = "addons/xmlapi";
 
         private string xmlApiMethodDevice = "devicelist";
         private string xmlApiMethodStateAll = "statelist";
@@ -149,37 +149,6 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         }
 
         /// <summary>
-        /// Triggers update of the global device list just for a single device by given address 
-        /// including its channels and data point or state data.
-        /// </summary>
-        public void UpdateStateByAddress(string address)
-        {
-            int iseId = 0;
-            iseId = GetInternalIdByAddress(address);
-
-            UpdateStateById(iseId);
-        }
-
-        /// <summary>
-        /// Triggers update of the global device list just for a single device by given ise-id 
-        /// including its channels and data point or state data.
-        /// </summary>
-        private void UpdateStateById(int iseId)
-        {
-            if (iseId > 0)
-            {
-                // requesting states list from HomeMatic XmlApi
-                XmlDocument xmlStates = GetApiData(xmlApiMethodStateSingle, "device_id", iseId.ToString());
-
-                if (xmlStates != null)
-                {
-                    UpdateStates(xmlStates);
-                    return;
-                }
-            }
-        }
-
-        /// <summary>
         /// Triggers update of the global device list just for devices listed in fast update devices 
         /// collection, including their channels and data point or state data. If no fast update devices 
         /// are defined, we do a regular states update.
@@ -244,6 +213,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                                     HMDeviceDataPoint dataPoint = new HMDeviceDataPoint()
                                     {
                                         InternalId = int.Parse(pointElement.GetAttribute("ise_id")),
+                                        InternalIdParent = chanIseId,
                                         Type = pointElement.GetAttribute("type"),
                                         LastUpdateTimeStamp = long.Parse(pointElement.GetAttribute("timestamp")),
                                         ValueString = pointElement.GetAttribute("value"),
@@ -271,43 +241,92 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         }
 
         /// <summary>
+        /// Triggers update of the global device list just for a single device by given HM element
+        /// including its channels and data point or state data.
+        /// </summary>
+        private void UpdateState(HMBase hmElement)
+        {
+            if (hmElement != null)
+            {
+                // to update a single state its important to know what type we have to update
+                string param = String.Empty;
+                int iseId = 0;
+
+                switch (hmElement.GetType().Name)
+                {
+                    case "HMDevice":
+                        param = "device_id";
+                        iseId = hmElement.InternalId;
+                        break;
+
+                    case "HMDeviceChannel":
+                        param = "channel_id";
+                        iseId = hmElement.InternalId;
+                        break;
+
+                    case "HMDeviceDataPoint":
+                        param = "channel_id";
+                        iseId = ((HMDeviceDataPoint)hmElement).InternalIdParent;
+                        break;
+
+                    default:
+                        break;
+                }
+
+                // requesting states list from HomeMatic XmlApi
+                XmlDocument xmlStates = GetApiData(xmlApiMethodStateSingle, param, iseId.ToString());
+
+                if (xmlStates != null)
+                {
+                    UpdateStates(xmlStates);
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
         /// Sets the state of a data point by address of the data point
         /// </summary>
-        /// <param name="Address"></param>
-        /// <param name="Value"></param>
-        /// <returns></returns>
-        public bool SetState(string Address, object Value)
+        /// <param name="address">Address of channel</param>
+        /// <param name="value">The new value the needs to be assigned to the data point</param>
+        /// <returns>Result of operation; true if everything is okay</returns>
+        /// <remarks>Updating of set element is not supported (see depecated message)!</remarks>
+        [Obsolete("Please use the SetState(HMBase, object) or the SetStateByAddress(string, string, object) method!", false)]
+        public bool SetState(string address, object value)
         {
-            // TODO: Test it because obviously we're gonna have trouble to identify the correct data point; think it'll just hit the right channel.
-            return SetState(GetInternalIdByAddress(Address), Value);
+            // We're just able to set the primary datapoint because we're not addressing the datapoint by key
+            return SetState(GetInternalIdByAddress(address), value);
         }
 
         /// <summary>
         /// Sets the state of a data point by internal ID of the data point
         /// </summary>
-        /// <param name="InternalId"></param>
+        /// <param name="internalId">IseId of the data point to set</param>
+        /// <param name="value">The new value the needs to be assigned to the data point</param>
         /// <returns>Result of operation; true if everything is okay</returns>
-        public bool SetState(int InternalId, object Value)
+        /// <remarks>Updating of set element is not supported (see depecated message)!</remarks>
+        [Obsolete("Please use the SetState(HMBase, object) or the SetStateByAddress(string, string, object) method!", false)]
+        public bool SetState(int internalId, object value)
         {
             try
             {
-                if(InternalId <= 0 || Value == null)
+                if(internalId <= 0 || value == null)
                 {
                     return false;
                 }
 
-                string internalId = InternalId.ToString();
-                string stringRepresentationOfValue = Convert.ToString(Value).ToLower();
+                string iseId = internalId.ToString();
+                string stringRepresentationOfValue = Convert.ToString(value).ToLower();
 
                 // requesting states list from HomeMatic XmlApi
-                XmlDocument xmlSetStates = GetApiData(xmlApiMethodStateSet, "ise_id", internalId, "new_value", stringRepresentationOfValue);
+                XmlDocument xmlSetStates = GetApiData(xmlApiMethodStateSet, "ise_id", iseId, "new_value", stringRepresentationOfValue);
 
                 // checking results
                 XmlNode resultNode = xmlSetStates.DocumentElement.FirstChild;
                 {
-                    if(resultNode.Name == "changed" && resultNode.Attributes["id"].Value == internalId && resultNode.Attributes["new_value"].Value == stringRepresentationOfValue)
+                    if(resultNode.Name == "changed" && resultNode.Attributes["id"].Value == iseId && resultNode.Attributes["new_value"].Value == stringRepresentationOfValue)
                     {
-                        UpdateStateById(int.Parse(internalId));
+                        // No internal updating implemented because we're just aware of the internal id but we did not know if it is a channel or datapoint
                         return true;
                     }
                     else
@@ -317,6 +336,71 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 }
             }
             catch 
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Sets the state of a data point by address of the data point
+        /// </summary>
+        /// <param name="hmElement">An HMBase object that represents a channel or a data point</param>
+        /// <param name="Value">The new value the needs to be assigned to the data point</param>
+        /// <returns>Result of operation; true if everything is okay</returns>
+        public bool SetState(HMBase hmElement, object Value)
+        {
+            try
+            {
+                if (hmElement == null || !(hmElement.GetType() == typeof(HMDeviceChannel) || hmElement.GetType() == typeof(HMDeviceDataPoint)))
+                {
+                    return false;
+                }
+
+                string internalId = hmElement.InternalId.ToString();
+                string stringRepresentationOfValue = Convert.ToString(Value).ToLower();
+
+                // requesting states list from HomeMatic XmlApi
+                XmlDocument xmlSetStates = GetApiData(xmlApiMethodStateSet, "ise_id", internalId, "new_value", stringRepresentationOfValue);
+
+                // checking results
+                XmlNode resultNode = xmlSetStates.DocumentElement.FirstChild;
+                {
+                    if (resultNode.Name == "changed" && resultNode.Attributes["id"].Value == internalId && resultNode.Attributes["new_value"].Value == stringRepresentationOfValue)
+                    {
+                        UpdateState(hmElement);
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Sets the state of a data point by full address and key of the data point
+        /// </summary>
+        /// <param name="Address">Full address of the desired channel</param>
+        /// <param name="Key">Key or typename of the desired data point</param>
+        /// <param name="Value">The new value the needs to be assigned to the data point</param>
+        /// <returns>Result of operation; true if everything is okay</returns>
+        public bool SetStateByAddress(string Address, string Key, object Value)
+        {
+            try
+            {
+                if (String.IsNullOrWhiteSpace(Address) || String.IsNullOrWhiteSpace(Key) || Value == null)
+                {
+                    return false;
+                }
+
+                return SetState(GetDataByAddress(Address, Key), Value);
+            }
+            catch
             {
                 return false;
             }
@@ -441,6 +525,80 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         }
 
         /// <summary>
+        /// Gets the device by given HomeMatic device or channel address
+        /// </summary>
+        /// <param name="address">HomeMatic device or channel address</param>
+        /// <returns>Device</returns>
+        public HMDevice GetDeviceByAddress(string address)
+        {
+            try
+            {
+                if (address.Contains(":"))
+                {
+                    return devices.First(d => d.Address == (address.Substring(0, address.IndexOf(":"))));
+                }
+                else
+                {
+                    return devices.First(d => d.Address == address);
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets the device channel by given HomeMatic channel address
+        /// </summary>
+        /// <param name="address">HomeMatic channel address (ends with channel number separated by ':')</param>
+        /// <returns>Channel</returns>
+        public HMDeviceChannel GetChannelByAddress(string address)
+        {
+            try
+            {
+                if (address.Contains(":"))
+                {
+                    HMDevice device = GetDeviceByAddress(address);
+                    if (device != null && device.Channels.Count > 0)
+                    {
+                        return device.Channels.First(c => c.Address == address);
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets the device channels datapoint by given HomeMatic device or channel address and data value type name
+        /// </summary>
+        /// <param name="address"></param>
+        /// <param name="valueType">The name of the value type (STATE, LOWBAT, MOTION, etc.)</param>
+        /// <returns>Data point</returns>
+        public HMDeviceDataPoint GetDataByAddress(string address, string valueTypeName)
+        {
+            try
+            {
+                HMDeviceChannel channel = GetChannelByAddress(address);
+                if (channel != null && channel.DataPoints.ContainsKey(valueTypeName))
+                {
+                    return channel.DataPoints[valueTypeName];
+                }
+
+                return null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Gets the internal ID for devices or channels by given HomeMatic device or channel address
         /// </summary>
         /// <param name="address">HomeMatic device or channel address</param>
@@ -479,80 +637,6 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             }
 
             return result;
-        }
-
-        /// <summary>
-        /// Gets the device by given HomeMatic device or channel address
-        /// </summary>
-        /// <param name="address">HomeMatic device or channel address</param>
-        /// <returns>Device</returns>
-        public HMDevice GetDeviceByAddress(string address)
-        {
-            try
-            {
-                if (address.Contains(":"))
-                {
-                    return devices.First(d => d.Address == (address.Substring(0, address.IndexOf(":"))));
-                }
-                else
-                {
-                    return devices.First(d => d.Address == address);
-                }
-            }
-            catch(Exception)
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Gets the device channel by given HomeMatic channel address
-        /// </summary>
-        /// <param name="address">HomeMatic channel address (ends with channel number separated by ':')</param>
-        /// <returns>Channel</returns>
-        public HMDeviceChannel GetChannelByAddress(string address)
-        {
-            try
-            {
-                if (address.Contains(":"))
-                {
-                    HMDevice device = GetDeviceByAddress(address);
-                    if (device != null && device.Channels.Count > 0)
-                    {
-                        return device.Channels.First(c => c.Address == address);
-                    }
-                }
-
-                return null;
-            }
-            catch(Exception)
-            {
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Gets the device channels datapoint by given HomeMatic device or channel address and data value type name
-        /// </summary>
-        /// <param name="address"></param>
-        /// <param name="valueType">The name of the value type (STATE, LOWBAT, MOTION, etc.)</param>
-        /// <returns>Data point</returns>
-        public HMDeviceDataPoint GetDataByAddress(string address, string valueTypeName)
-        {
-            try
-            {
-                HMDeviceChannel channel = GetChannelByAddress(address);
-                if (channel != null && channel.DataPoints.ContainsKey(valueTypeName))
-                {
-                    return channel.DataPoints[valueTypeName];
-                }
-
-                return null;
-            }
-            catch(Exception)
-            {
-                return null;
-            }
         }
 
         /// <summary>

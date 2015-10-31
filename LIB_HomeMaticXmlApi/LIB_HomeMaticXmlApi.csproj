@@ -46,6 +46,7 @@
     <Compile Include="HMDeviceDataPoint.cs" />
     <Compile Include="HMSystemMessage.cs" />
     <Compile Include="HMSystemVariable.cs" />
+    <Compile Include="HMBase.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

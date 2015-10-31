@@ -4,16 +4,13 @@ using System.Collections.Generic;
 
 namespace TRoschinsky.Lib.HomeMaticXmlApi
 {
-    public class HMDeviceChannel
+    public class HMDeviceChannel : HMBase
     {
         private const string default1stDataTypeName = "STATE";
         private const string default2ndDataTypeName = "MOTION";
         private const string default3rdDataTypeName = "ACTUAL_TEMPERATURE";
         private const string default4thDataTypeName = "STICKY_UNREACH";
 
-        public int InternalId { get; set; }
-        public string Address { get; set; }
-        public string Name { get; set; }
         private string defaultDataType = String.Empty;
         public string DefaultDataType 
         {
@@ -70,6 +67,27 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             {
                 return new HMDeviceDataPoint();
             }
+        }
+
+        private List<int> GetContainedChannels()
+        {
+            List<int> result = new List<int>();
+            try
+            {
+                if (dataPoints.Count > 0)
+                {
+                    foreach (KeyValuePair<string, HMDeviceDataPoint> datapoint in dataPoints)
+                    {
+                        result.Add(datapoint.Value.InternalId);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // nothing to do here
+            }
+
+            return result;
         }
     }
 }

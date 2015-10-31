@@ -5,18 +5,18 @@ using System.Globalization;
 
 namespace TRoschinsky.Lib.HomeMaticXmlApi
 {
-    public class HMDeviceDataPoint
+    public class HMDeviceDataPoint : HMBase
     {
-        public int InternalId { get; set; }
+        public int InternalIdParent { get; set; }
         public string Type { get; set; }
-        public object Value { get { return Typedvalue(); } }
+        public object Value { get { return TypedValue(); } }
         public string ValueType { get; set; }
         public string ValueString { get; set; }
         public string ValueUnit { get; set; }
         public long LastUpdateTimeStamp { get; set; }
         public DateTime LastUpdate { get { return HMApiWrapper.TimeStampToDateTime(LastUpdateTimeStamp); } }
 
-        private object Typedvalue()
+        private object TypedValue()
         {
             object returnValue;
 
