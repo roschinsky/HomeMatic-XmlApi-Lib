@@ -7,7 +7,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 {
     public partial class FormMain : Form
     {
-        private HMApiWrapper hmcProxy;
+        private HMApiWrapper hmWrapper;
 
         public FormMain()
         {
@@ -28,29 +28,36 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             try
             {
-                if (hmcProxy == null)
+                if (hmWrapper == null)
                 {
-                    hmcProxy = new HMApiWrapper(new Uri(txtConnect.Text), false, false);
+                    hmWrapper = new HMApiWrapper(new Uri(txtConnect.Text), false, false);
                 }
 
-                hmcProxy.FastUpdateDeviceSetup("LEQ0502263:1");
-                hmcProxy.FastUpdateDeviceSetup("LEQ0412714");
-                hmcProxy.FastUpdateDeviceSetup("LEQ1468091:1");
+                hmWrapper.FastUpdateDeviceSetup("LEQ0502263:1");
+                hmWrapper.FastUpdateDeviceSetup("LEQ0412714");
+                hmWrapper.FastUpdateDeviceSetup("LEQ1468091:1");
 
                 RefreshTreeView();
             }
             catch(Exception ex)
             {
-                MessageBox.Show(ex.Message, "Connect to HMC failed...", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message, "Connect to HMC failed...\n" + ex.Message, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void btnRequestHighPrioUpdate_Click(object sender, EventArgs e)
         {
-            if (hmcProxy != null)
+            try
             {
-                hmcProxy.UpdateStates(true);
-                RefreshTreeView();
+                if (hmWrapper != null)
+                {
+                    hmWrapper.UpdateStates(hmWrapper.FastUpdateDevices.Count > 0);
+                    RefreshTreeView();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "High-Prio update failed...\n" + ex.Message, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -58,13 +65,13 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             treeView.Nodes.Clear();
 
-            hmcProxy.UpdateStates(false);
+            hmWrapper.UpdateStates(false);
 
-            if (hmcProxy != null && hmcProxy.Devices.Count > 0)
+            if (hmWrapper != null && hmWrapper.Devices.Count > 0)
             {
                 TreeNode devNode = new TreeNode("Devices");
 
-                foreach (HMDevice device in hmcProxy.Devices)
+                foreach (HMDevice device in hmWrapper.Devices)
                 {
                     TreeNode devNodeSub = devNode.Nodes.Add(device.ToString());
                     foreach (HMDeviceChannel channel in device.Channels)
@@ -84,13 +91,13 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 treeView.Nodes.Add(devNode);
             }
 
-            hmcProxy.UpdateVariables();
+            hmWrapper.UpdateVariables();
 
-            if (hmcProxy != null && hmcProxy.Variables.Count > 0)
+            if (hmWrapper != null && hmWrapper.Variables.Count > 0)
             {
                 TreeNode varNode = new TreeNode("Variables");
 
-                foreach (HMSystemVariable variable in hmcProxy.Variables)
+                foreach (HMSystemVariable variable in hmWrapper.Variables)
                 {
                     varNode.Nodes.Add(variable.ToString());
                 }
@@ -98,13 +105,13 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 treeView.Nodes.Add(varNode);
             }
 
-            hmcProxy.UpdateMessages();
+            hmWrapper.UpdateMessages();
 
-            if (hmcProxy != null && hmcProxy.Messages.Count > 0)
+            if (hmWrapper != null && hmWrapper.Messages.Count > 0)
             {
                 TreeNode msgNode = new TreeNode("Messages");
 
-                foreach (HMSystemMessage message in hmcProxy.Messages)
+                foreach (HMSystemMessage message in hmWrapper.Messages)
                 {
                     msgNode.Nodes.Add(message.ToString());
                 }
@@ -133,7 +140,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error obtaining channel...", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message, "Error obtaining channel...\n" + ex.Message, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -150,7 +157,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     DialogSetDataPoint dataPointDialog = sender as DialogSetDataPoint;
                     if(dataPointDialog != null && dataPointDialog.ValueWasSet)
                     {
-                        if(hmcProxy.SetState(dataPointDialog.InternalIdToSet, dataPointDialog.ValueToSet))
+                        if(hmWrapper.SetState(dataPointDialog.DataChannel, dataPointDialog.ValueToSet))
                         {
                             MessageBox.Show("Operation result: SUCCESS", "Operating channel...", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
@@ -164,6 +171,21 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Error operating channel...", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void btnMessagesClear_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if(hmWrapper != null)
+                {
+                    hmWrapper.SetMessages();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Clearing messages failed...\n" + ex.Message, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

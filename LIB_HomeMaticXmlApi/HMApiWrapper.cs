@@ -15,7 +15,9 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         private string xmlApiMethodStateSingle = "state";
         private string xmlApiMethodStateSet = "statechange";
         private string xmlApiMethodVariable = "sysvarlist";
+        private string xmlApiMethodVariableSet = "statechange";
         private string xmlApiMethodMessage = "systemNotification";
+        private string xmlApiMethodMessageSet = "systemNotificationClear";
 
         private Uri HMUrl;
 
@@ -33,7 +35,8 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
 
         /// <summary>
-        /// Basic constructor
+        /// Basic constructor of Homematic wrapper. Connects to the XML-API on CCU2 and triggers initialization 
+        /// without retrieving states, variables or messages.
         /// </summary>
         /// <param name="homeMaticUri">Uri to HomeMatic</param>
         public HMApiWrapper(Uri homeMaticUri)
@@ -43,7 +46,8 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         }
 
         /// <summary>
-        /// Advanced constructor
+        /// Advanced constructor of Homematic wrapper. Connects to the XML-API on CCU2 and lets you choose 
+        /// what types of information (states, variables or messages) you'll initialize
         /// </summary>
         /// <param name="homeMaticUri">Uri to HomeMatic</param>
         /// <param name="initializeWithStates">Set to true if you want to initialize the wrapper with states; operation takes longer but you are able to access states immediately</param>
@@ -53,6 +57,8 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             HMUrl = homeMaticUri;
             Initialize(initializeWithStates, initializeWithVariables);
         }
+
+        #region Main logic
 
         /// <summary>
         /// Method to initialize the wrapper; gets all available devices and, if needed, states of devices
@@ -73,6 +79,49 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 UpdateVariables();
             }
         }
+
+        /// <summary>
+        /// Gets all devices including their channels but without any data point or state data
+        /// </summary>
+        /// <returns>List containing devices with channels</returns>
+        private List<HMDevice> GetDevices()
+        {
+            List<HMDevice> result = new List<HMDevice>();
+
+            // requesting devices list from HomeMatic XmlApi
+            XmlDocument xmlDevices = GetApiData(xmlApiMethodDevice);
+
+            // iterating devices
+            foreach (XmlElement devElement in xmlDevices.DocumentElement.ChildNodes)
+            {
+                HMDevice device = new HMDevice()
+                {
+                    Name = devElement.GetAttribute("name"),
+                    Address = devElement.GetAttribute("address"),
+                    InternalId = int.Parse(devElement.GetAttribute("ise_id")),
+                    DeviceType = devElement.GetAttribute("device_type")
+                };
+
+                // iterating channels
+                foreach (XmlElement chanElement in devElement.ChildNodes)
+                {
+                    HMDeviceChannel channel = new HMDeviceChannel()
+                    {
+                        Name = chanElement.GetAttribute("name"),
+                        Address = chanElement.GetAttribute("address"),
+                        InternalId = int.Parse(chanElement.GetAttribute("ise_id")),
+                    };
+
+                    device.AddChannel(channel);
+                }
+
+                result.Add(device);
+            }
+
+            return result;
+        }
+
+        #region Homematic system variables
 
         /// <summary>
         /// Updates the global list of system variables
@@ -102,6 +151,21 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         }
 
         /// <summary>
+        /// Sets a referenced system variable to a given value
+        /// </summary>
+        /// <param name="hmElement">An HMBase object that represents a system variable</param>
+        /// <param name="value">The new value the needs to be assigned to the system variable</param>
+        /// <returns></returns>
+        public bool SetVariable(HMBase hmElement, object value)
+        {
+            throw new NotImplementedException("Setting variables will be available in future release.");
+        }
+
+        #endregion
+
+        #region Homematic system messages
+
+        /// <summary>
         /// Updates the global list of system messages
         /// </summary>
         public void UpdateMessages()
@@ -126,6 +190,25 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 messages.Add(message);
             }
         }
+
+        /// <summary>
+        /// Confirms all messages and resets the global list of system messages
+        /// </summary>
+        public void SetMessages()
+        {
+            // requesting system messages list from HomeMatic XmlApi
+            XmlDocument xmlMessages = GetApiData(xmlApiMethodMessageSet);
+
+            // wait a little while
+            System.Threading.Thread.Sleep(250);
+
+            // update messages
+            UpdateMessages();
+        }
+
+        #endregion
+
+        #region Homematic system states
 
         /// <summary>
         /// Triggers update of the global device list including their channels and data point or state data
@@ -290,7 +373,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <param name="address">Address of channel</param>
         /// <param name="value">The new value the needs to be assigned to the data point</param>
         /// <returns>Result of operation; true if everything is okay</returns>
-        /// <remarks>Updating of set element is not supported (see depecated message)!</remarks>
+        /// <remarks>Updating of set element is not supported (see deprecated message)!</remarks>
         [Obsolete("Please use the SetState(HMBase, object) or the SetStateByAddress(string, string, object) method!", false)]
         public bool SetState(string address, object value)
         {
@@ -304,7 +387,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <param name="internalId">IseId of the data point to set</param>
         /// <param name="value">The new value the needs to be assigned to the data point</param>
         /// <returns>Result of operation; true if everything is okay</returns>
-        /// <remarks>Updating of set element is not supported (see depecated message)!</remarks>
+        /// <remarks>Updating of set element is not supported (see deprecated message)!</remarks>
         [Obsolete("Please use the SetState(HMBase, object) or the SetStateByAddress(string, string, object) method!", false)]
         public bool SetState(int internalId, object value)
         {
@@ -345,9 +428,9 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// Sets the state of a data point by address of the data point
         /// </summary>
         /// <param name="hmElement">An HMBase object that represents a channel or a data point</param>
-        /// <param name="Value">The new value the needs to be assigned to the data point</param>
+        /// <param name="value">The new value the needs to be assigned to the data point</param>
         /// <returns>Result of operation; true if everything is okay</returns>
-        public bool SetState(HMBase hmElement, object Value)
+        public bool SetState(HMBase hmElement, object value)
         {
             try
             {
@@ -357,7 +440,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 }
 
                 string internalId = hmElement.InternalId.ToString();
-                string stringRepresentationOfValue = Convert.ToString(Value).ToLower();
+                string stringRepresentationOfValue = Convert.ToString(value).ToLower();
 
                 // requesting states list from HomeMatic XmlApi
                 XmlDocument xmlSetStates = GetApiData(xmlApiMethodStateSet, "ise_id", internalId, "new_value", stringRepresentationOfValue);
@@ -385,20 +468,20 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <summary>
         /// Sets the state of a data point by full address and key of the data point
         /// </summary>
-        /// <param name="Address">Full address of the desired channel</param>
-        /// <param name="Key">Key or typename of the desired data point</param>
+        /// <param name="address">Full address of the desired channel</param>
+        /// <param name="key">Key or typename of the desired data point</param>
         /// <param name="Value">The new value the needs to be assigned to the data point</param>
         /// <returns>Result of operation; true if everything is okay</returns>
-        public bool SetStateByAddress(string Address, string Key, object Value)
+        public bool SetStateByAddress(string address, string key, object Value)
         {
             try
             {
-                if (String.IsNullOrWhiteSpace(Address) || String.IsNullOrWhiteSpace(Key) || Value == null)
+                if (String.IsNullOrWhiteSpace(address) || String.IsNullOrWhiteSpace(key) || Value == null)
                 {
                     return false;
                 }
 
-                return SetState(GetDataByAddress(Address, Key), Value);
+                return SetState(GetDataByAddress(address, key), Value);
             }
             catch
             {
@@ -406,46 +489,9 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             }
         }
 
-        /// <summary>
-        /// Gets all devices including their channels but without any data point or state data
-        /// </summary>
-        /// <returns>List containing devices with channels</returns>
-        private List<HMDevice> GetDevices()
-        {
-            List<HMDevice> result = new List<HMDevice>();
+        #endregion
 
-            // requesting devices list from HomeMatic XmlApi
-            XmlDocument xmlDevices = GetApiData(xmlApiMethodDevice);
-
-            // iterating devices
-            foreach(XmlElement devElement in xmlDevices.DocumentElement.ChildNodes)
-            {
-                HMDevice device = new HMDevice()
-                {
-                    Name = devElement.GetAttribute("name"),
-                    Address = devElement.GetAttribute("address"),
-                    InternalId = int.Parse(devElement.GetAttribute("ise_id")),
-                    DeviceType = devElement.GetAttribute("device_type")
-                };
-
-                // iterating channels
-                foreach (XmlElement chanElement in devElement.ChildNodes)
-                {
-                    HMDeviceChannel channel = new HMDeviceChannel()
-                    {
-                        Name = chanElement.GetAttribute("name"),
-                        Address = chanElement.GetAttribute("address"),
-                        InternalId = int.Parse(chanElement.GetAttribute("ise_id")),
-                    };
-
-                    device.AddChannel(channel);
-                }
-
-                result.Add(device);
-            }
-
-            return result;
-        }
+        #endregion
 
         #region Class helper
 

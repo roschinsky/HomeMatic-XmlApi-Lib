@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Linq;
-using System.Collections.Generic;
 using System.Globalization;
 
 namespace TRoschinsky.Lib.HomeMaticXmlApi
@@ -8,7 +6,6 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
     public class HMDeviceDataPoint : HMBase
     {
         public int InternalIdParent { get; set; }
-        public string Type { get; set; }
         public object Value { get { return TypedValue(); } }
         public string ValueType { get; set; }
         public string ValueString { get; set; }
@@ -70,7 +67,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
         public override string ToString()
         {
-            return String.Format("DP >> {0} - Value '{1}{3}' @ {2}", Type, Value, LastUpdate, (String.IsNullOrEmpty(ValueUnit) ? String.Empty : " " + ValueUnit));
+            return String.Format("DDP >> {0} - Value '{1}{3}' @ {2}", Type, Value, LastUpdate, (String.IsNullOrEmpty(ValueUnit) ? String.Empty : " " + ValueUnit));
         }
     }
 }

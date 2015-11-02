@@ -7,13 +7,13 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
     {
         public bool ValueWasSet = false;
         public string ValueToSet = String.Empty;
-        public int InternalIdToSet = 0;
+        public HMDeviceChannel DataChannel;
 
         public DialogSetDataPoint(HMDeviceChannel channel)
         {
-            InternalIdToSet = channel.PrimaryDataPoint.InternalId;
+            DataChannel = channel;
             InitializeComponent();
-            Text += " " + InternalIdToSet;
+            Text += " " + channel.InternalId;
             lblDataPointName.Text = channel.ToString();
             txtValue.Text = String.Concat(channel.PrimaryValue);
         }

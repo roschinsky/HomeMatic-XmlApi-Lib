@@ -33,6 +33,7 @@
             this.txtConnect = new System.Windows.Forms.TextBox();
             this.btnRequestHighPrioUpdate = new System.Windows.Forms.Button();
             this.linkLabelGitHub = new System.Windows.Forms.LinkLabel();
+            this.btnMessagesClear = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // treeView
@@ -94,12 +95,24 @@
             this.linkLabelGitHub.Text = "https://github.com/roschinsky/HomeMatic-XmlApi-Lib";
             this.linkLabelGitHub.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.linkLabelGitHub_LinkClicked);
             // 
+            // btnMessagesClear
+            // 
+            this.btnMessagesClear.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
+            this.btnMessagesClear.Location = new System.Drawing.Point(341, 71);
+            this.btnMessagesClear.Name = "btnMessagesClear";
+            this.btnMessagesClear.Size = new System.Drawing.Size(75, 39);
+            this.btnMessagesClear.TabIndex = 3;
+            this.btnMessagesClear.Text = "Clear messages";
+            this.btnMessagesClear.UseVisualStyleBackColor = true;
+            this.btnMessagesClear.Click += new System.EventHandler(this.btnMessagesClear_Click);
+            // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(428, 255);
             this.Controls.Add(this.linkLabelGitHub);
+            this.Controls.Add(this.btnMessagesClear);
             this.Controls.Add(this.btnRequestHighPrioUpdate);
             this.Controls.Add(this.txtConnect);
             this.Controls.Add(this.btnConnect);
@@ -118,6 +131,7 @@
         private System.Windows.Forms.TextBox txtConnect;
         private System.Windows.Forms.Button btnRequestHighPrioUpdate;
         private System.Windows.Forms.LinkLabel linkLabelGitHub;
+        private System.Windows.Forms.Button btnMessagesClear;
     }
 }
 
