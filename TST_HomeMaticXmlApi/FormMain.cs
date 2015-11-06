@@ -8,10 +8,34 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
     public partial class FormMain : Form
     {
         private HMApiWrapper hmWrapper;
+        private List<string> hmFastUpdates = new List<string>();
 
         public FormMain()
         {
             InitializeComponent();
+            try
+            {
+                // Gets default URL to Homematic CCU2 and fill input field
+                if (Properties.Settings.Default.UseDefaultUrl && !String.IsNullOrWhiteSpace(Properties.Settings.Default.HMDefaultUrl))
+                {
+                    txtConnect.Text = Properties.Settings.Default.HMDefaultUrl;
+                    txtConnect_Enter(null, null);
+                }
+
+                // Gets all fast update devices or channels from config
+                if (!String.IsNullOrWhiteSpace(Properties.Settings.Default.HMFastUpdate))
+                {
+                    string[] fastUpdateSettings = Properties.Settings.Default.HMFastUpdate.Trim().Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                    foreach(string fastUpdate in fastUpdateSettings)
+                    {
+                        hmFastUpdates.Add(fastUpdate.Trim());
+                    }
+                }
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Processing configuration failed...\n" + ex.Message, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         private void txtConnect_Enter(object sender, EventArgs e)
@@ -19,7 +43,6 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             if (txtConnect.ForeColor != SystemColors.WindowText)
             {
                 txtConnect.ForeColor = SystemColors.WindowText;
-                txtConnect.Text = String.Empty;
                 txtConnect.AutoCompleteSource = AutoCompleteSource.AllUrl;
             }
         }
@@ -33,9 +56,13 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     hmWrapper = new HMApiWrapper(new Uri(txtConnect.Text), false, false);
                 }
 
-                hmWrapper.FastUpdateDeviceSetup("LEQ0502263:1");
-                hmWrapper.FastUpdateDeviceSetup("LEQ0412714");
-                hmWrapper.FastUpdateDeviceSetup("LEQ1468091:1");
+                Properties.Settings.Default.HMDefaultUrl = txtConnect.Text.Trim();
+                Properties.Settings.Default.Save();
+
+                foreach(string fastUpdate in hmFastUpdates)
+                {
+                    hmWrapper.FastUpdateDeviceSetup(fastUpdate);
+                }
 
                 RefreshTreeView();
             }
@@ -73,7 +100,9 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
                 foreach (HMDevice device in hmWrapper.Devices)
                 {
-                    TreeNode devNodeSub = devNode.Nodes.Add(device.ToString());
+                    TreeNode devNodeParent = devNode.Nodes.Add(device.ToString());
+                    devNodeParent.Tag = device;
+
                     foreach (HMDeviceChannel channel in device.Channels)
                     {
                         TreeNode channelNode = new TreeNode(channel.ToString());
@@ -81,10 +110,12 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
                         foreach(KeyValuePair<string, HMDeviceDataPoint> datapoint in channel.DataPoints)
                         {
-                            channelNode.Nodes.Add(datapoint.Value.ToString());
+                            TreeNode dataPointNode = new TreeNode(datapoint.Value.ToString());
+                            dataPointNode.Tag = datapoint.Value;
+                            channelNode.Nodes.Add(dataPointNode);
                         }
 
-                        devNodeSub.Nodes.Add(channelNode);
+                        devNodeParent.Nodes.Add(channelNode);
                     }
                 }
 
@@ -95,28 +126,32 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
             if (hmWrapper != null && hmWrapper.Variables.Count > 0)
             {
-                TreeNode varNode = new TreeNode("Variables");
+                TreeNode varNodeParent = new TreeNode("Variables");
 
                 foreach (HMSystemVariable variable in hmWrapper.Variables)
                 {
-                    varNode.Nodes.Add(variable.ToString());
+                    TreeNode varNode = new TreeNode(variable.ToString());
+                    varNode.Tag = variable;
+                    varNodeParent.Nodes.Add(varNode);
                 }
 
-                treeView.Nodes.Add(varNode);
+                treeView.Nodes.Add(varNodeParent);
             }
 
             hmWrapper.UpdateMessages();
 
             if (hmWrapper != null && hmWrapper.Messages.Count > 0)
             {
-                TreeNode msgNode = new TreeNode("Messages");
+                TreeNode msgNodeParent = new TreeNode("Messages");
 
                 foreach (HMSystemMessage message in hmWrapper.Messages)
                 {
-                    msgNode.Nodes.Add(message.ToString());
+                    TreeNode msgNode = new TreeNode(message.ToString());
+                    msgNode.Tag = message;
+                    msgNodeParent.Nodes.Add(msgNode);
                 }
 
-                treeView.Nodes.Add(msgNode);
+                treeView.Nodes.Add(msgNodeParent);
             }
 
             if (treeView.Nodes.Count == 0)
@@ -129,10 +164,10 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             try
             {
-                HMDeviceChannel channel = treeView.SelectedNode.Tag as HMDeviceChannel;
-                if(channel != null)
+                HMBase hmElement = treeView.SelectedNode.Tag as HMBase;
+                if(hmElement != null)
                 {
-                    DialogSetDataPoint dataPointDialog = new DialogSetDataPoint(channel);
+                    DialogHMData dataPointDialog = new DialogHMData(hmElement);
                     dataPointDialog.FormClosing += DataPointDialog_FormClosing;
                     dataPointDialog.ShowDialog();
                 }
@@ -154,10 +189,10 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 }
                 else
                 {
-                    DialogSetDataPoint dataPointDialog = sender as DialogSetDataPoint;
+                    DialogHMData dataPointDialog = sender as DialogHMData;
                     if(dataPointDialog != null && dataPointDialog.ValueWasSet)
                     {
-                        if(hmWrapper.SetState(dataPointDialog.DataChannel, dataPointDialog.ValueToSet))
+                        if(hmWrapper.SetState(dataPointDialog.HMElement, dataPointDialog.ValueToSet))
                         {
                             MessageBox.Show("Operation result: SUCCESS", "Operating channel...", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }

@@ -44,11 +44,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DialogSetDataPoint.cs">
+    <Compile Include="DialogHMData.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="DialogSetDataPoint.Designer.cs">
-      <DependentUpon>DialogSetDataPoint.cs</DependentUpon>
+    <Compile Include="DialogHMData.Designer.cs">
+      <DependentUpon>DialogHMData.cs</DependentUpon>
     </Compile>
     <Compile Include="FormMain.cs">
       <SubType>Form</SubType>
@@ -58,8 +58,13 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="DialogSetDataPoint.resx">
-      <DependentUpon>DialogSetDataPoint.cs</DependentUpon>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="DialogHMData.resx">
+      <DependentUpon>DialogHMData.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="FormMain.resx">
       <DependentUpon>FormMain.cs</DependentUpon>
@@ -77,6 +82,10 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\LIB_HomeMaticXmlApi\LIB_HomeMaticXmlApi.csproj">

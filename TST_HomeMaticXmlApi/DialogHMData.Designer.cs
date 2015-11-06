@@ -1,6 +1,6 @@
 ﻿namespace TRoschinsky.Lib.HomeMaticXmlApi
 {
-    partial class DialogSetDataPoint
+    partial class DialogHMData
     {
         /// <summary>
         /// Required designer variable.
@@ -37,7 +37,8 @@
             // btnSet
             // 
             this.btnSet.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnSet.Location = new System.Drawing.Point(116, 86);
+            this.btnSet.Enabled = false;
+            this.btnSet.Location = new System.Drawing.Point(214, 86);
             this.btnSet.Name = "btnSet";
             this.btnSet.Size = new System.Drawing.Size(75, 23);
             this.btnSet.TabIndex = 0;
@@ -48,7 +49,8 @@
             // btnCancel
             // 
             this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.btnCancel.Location = new System.Drawing.Point(197, 86);
+            this.btnCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
+            this.btnCancel.Location = new System.Drawing.Point(295, 86);
             this.btnCancel.Name = "btnCancel";
             this.btnCancel.Size = new System.Drawing.Size(75, 23);
             this.btnCancel.TabIndex = 0;
@@ -72,16 +74,16 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.txtValue.Location = new System.Drawing.Point(13, 41);
             this.txtValue.Name = "txtValue";
-            this.txtValue.Size = new System.Drawing.Size(259, 20);
+            this.txtValue.Size = new System.Drawing.Size(357, 20);
             this.txtValue.TabIndex = 2;
             // 
-            // DialogSetDataPoint
+            // DialogHMData
             // 
             this.AcceptButton = this.btnSet;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.btnCancel;
-            this.ClientSize = new System.Drawing.Size(284, 121);
+            this.ClientSize = new System.Drawing.Size(382, 121);
             this.Controls.Add(this.txtValue);
             this.Controls.Add(this.lblDataPointName);
             this.Controls.Add(this.btnCancel);
@@ -91,10 +93,9 @@
             this.MaximumSize = new System.Drawing.Size(500, 160);
             this.MinimizeBox = false;
             this.MinimumSize = new System.Drawing.Size(300, 160);
-            this.Name = "DialogSetDataPoint";
+            this.Name = "DialogHMData";
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterParent;
-            this.Text = "Set Data Point";
             this.ResumeLayout(false);
             this.PerformLayout();
 
