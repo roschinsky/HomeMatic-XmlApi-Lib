@@ -190,16 +190,30 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 else
                 {
                     DialogHMData dataPointDialog = sender as DialogHMData;
-                    if(dataPointDialog != null && dataPointDialog.ValueWasSet)
+                    if(dataPointDialog != null && dataPointDialog.ValueWasSet && dataPointDialog.HMElement != null)
                     {
-                        if(hmWrapper.SetState(dataPointDialog.HMElement, dataPointDialog.ValueToSet))
+                        bool success = false;
+                        if (dataPointDialog.HMElement.GetType() == typeof(HMSystemVariable))
                         {
-                            MessageBox.Show("Operation result: SUCCESS", "Operating channel...", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            success = hmWrapper.SetVariable(dataPointDialog.HMElement, dataPointDialog.ValueToSet);
+                        }
+                        else if(dataPointDialog.HMElement.GetType() == typeof(HMDeviceChannel) ||
+                            dataPointDialog.HMElement.GetType() == typeof(HMDeviceDataPoint))
+                        {
+                            success = hmWrapper.SetState(dataPointDialog.HMElement, dataPointDialog.ValueToSet);
                         }
                         else
                         {
-                            MessageBox.Show("Operation result: FAILURE", "Operating channel...", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                            MessageBox.Show(String.Format("Was not able to operate a type of {0}", dataPointDialog.HMElement.GetType().Name), 
+                                "Type to set unknown...", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                            return;
                         }
+
+                        MessageBox.Show(String.Format("Operation result: {0}", success ? "SUCCESS" : "FAILED"),
+                            String.Format("Setting {0}...", dataPointDialog.HMElement.GetType().Name),
+                            MessageBoxButtons.OK, success ? MessageBoxIcon.Information : MessageBoxIcon.Error);
+
+                        RefreshTreeView();
                     }
                 }
             }
