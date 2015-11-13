@@ -6,6 +6,15 @@ using System.Xml;
 
 namespace TRoschinsky.Lib.HomeMaticXmlApi
 {
+    /// <summary>
+    /// The Homematic XML-API wrapper core. This class provides you with all the essential methods 
+    /// to talk to a Homematic CCU2 with XML-API v1.10+ add-on installed. Once connected successfully 
+    /// to the CCU2 you're able to read and set all the devices including all channels and its data points.
+    /// The CCU2s service messages and system variables can be read and cleared/set as well.
+    /// The API wrapper needs to be triggered to take any actions - you'll have to take care of 
+    /// refreshing status values yourself. Due to performance reasons you can choose to simply just 
+    /// refresh some explicitly needed devices by adding them to the FastUpdateDevices collection.
+    /// </summary>
     public class HMApiWrapper
     {
         private string xmlApiDefaultPath = "addons/xmlapi";
@@ -158,7 +167,37 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <returns></returns>
         public bool SetVariable(HMBase hmElement, object value)
         {
-            throw new NotImplementedException("Setting variables will be available in future release.");
+            try
+            {
+                if (hmElement == null || hmElement.GetType() != typeof(HMSystemVariable))
+                {
+                    return false;
+                }
+
+                string internalId = hmElement.InternalId.ToString();
+                string stringRepresentationOfValue = Convert.ToString(value).ToLower();
+
+                // sending change of variable request to HomeMatic XmlApi
+                XmlDocument xmlSetStates = GetApiData(xmlApiMethodVariableSet, "ise_id", internalId, "new_value", stringRepresentationOfValue);
+
+                // checking results
+                XmlNode resultNode = xmlSetStates.DocumentElement.FirstChild;
+                {
+                    if (resultNode.Name == "changed" && resultNode.Attributes["id"].Value == internalId && resultNode.Attributes["new_value"].Value == stringRepresentationOfValue)
+                    {
+                        UpdateVariables();
+                        return true;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         #endregion
@@ -401,7 +440,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 string iseId = internalId.ToString();
                 string stringRepresentationOfValue = Convert.ToString(value).ToLower();
 
-                // requesting states list from HomeMatic XmlApi
+                // sending change of state request to HomeMatic XmlApi
                 XmlDocument xmlSetStates = GetApiData(xmlApiMethodStateSet, "ise_id", iseId, "new_value", stringRepresentationOfValue);
 
                 // checking results
@@ -442,7 +481,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 string internalId = hmElement.InternalId.ToString();
                 string stringRepresentationOfValue = Convert.ToString(value).ToLower();
 
-                // requesting states list from HomeMatic XmlApi
+                // sending change of state request to HomeMatic XmlApi
                 XmlDocument xmlSetStates = GetApiData(xmlApiMethodStateSet, "ise_id", internalId, "new_value", stringRepresentationOfValue);
 
                 // checking results
