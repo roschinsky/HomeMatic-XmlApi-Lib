@@ -9,6 +9,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
     {
         private HMApiWrapper hmWrapper;
         private List<string> hmFastUpdates = new List<string>();
+        public List<string> HmFastUpdates { get { return hmFastUpdates; } }
 
         public FormMain()
         {
@@ -26,13 +27,14 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 if (!String.IsNullOrWhiteSpace(Properties.Settings.Default.HMFastUpdate))
                 {
                     string[] fastUpdateSettings = Properties.Settings.Default.HMFastUpdate.Trim().Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
-                    foreach(string fastUpdate in fastUpdateSettings)
+                    foreach (string fastUpdate in fastUpdateSettings)
                     {
                         hmFastUpdates.Add(fastUpdate.Trim());
+                        listBoxFastUpdateDevices.Items.Add(fastUpdate.Trim());
                     }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Processing configuration failed...\n" + ex.Message, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -59,14 +61,22 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 Properties.Settings.Default.HMDefaultUrl = txtConnect.Text.Trim();
                 Properties.Settings.Default.Save();
 
-                foreach(string fastUpdate in hmFastUpdates)
+                foreach (string fastUpdate in hmFastUpdates)
                 {
                     hmWrapper.FastUpdateDeviceSetup(fastUpdate);
                 }
 
                 RefreshTreeView();
+
+                string log = String.Empty;
+                foreach(string logEntry in hmWrapper.Log)
+                {
+                    log += logEntry + Environment.NewLine;
+                }
+
+                MessageBox.Show(log);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Connect to HMC failed...\n" + ex.Message, MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -78,7 +88,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             {
                 if (hmWrapper != null)
                 {
-                    hmWrapper.UpdateStates(hmWrapper.FastUpdateDevices.Count > 0);
+                    hmWrapper.UpdateStates(checkBoxFastUpdateDevices.Checked);
                     RefreshTreeView();
                 }
             }
@@ -92,7 +102,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             treeView.Nodes.Clear();
 
-            hmWrapper.UpdateStates(false);
+            hmWrapper.UpdateStates(checkBoxFastUpdateDevices.Checked);
 
             if (hmWrapper != null && hmWrapper.Devices.Count > 0)
             {
@@ -108,7 +118,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                         TreeNode channelNode = new TreeNode(channel.ToString());
                         channelNode.Tag = channel;
 
-                        foreach(KeyValuePair<string, HMDeviceDataPoint> datapoint in channel.DataPoints)
+                        foreach (KeyValuePair<string, HMDeviceDataPoint> datapoint in channel.DataPoints)
                         {
                             TreeNode dataPointNode = new TreeNode(datapoint.Value.ToString());
                             dataPointNode.Tag = datapoint.Value;
@@ -165,7 +175,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             try
             {
                 HMBase hmElement = treeView.SelectedNode.Tag as HMBase;
-                if(hmElement != null)
+                if (hmElement != null)
                 {
                     DialogHMData dataPointDialog = new DialogHMData(hmElement);
                     dataPointDialog.FormClosing += DataPointDialog_FormClosing;
@@ -183,28 +193,28 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             try
             {
-                if(e.Cancel)
+                if (e.Cancel)
                 {
                     return;
                 }
                 else
                 {
                     DialogHMData dataPointDialog = sender as DialogHMData;
-                    if(dataPointDialog != null && dataPointDialog.ValueWasSet && dataPointDialog.HMElement != null)
+                    if (dataPointDialog != null && dataPointDialog.ValueWasSet && dataPointDialog.HMElement != null)
                     {
                         bool success = false;
                         if (dataPointDialog.HMElement.GetType() == typeof(HMSystemVariable))
                         {
                             success = hmWrapper.SetVariable(dataPointDialog.HMElement, dataPointDialog.ValueToSet);
                         }
-                        else if(dataPointDialog.HMElement.GetType() == typeof(HMDeviceChannel) ||
+                        else if (dataPointDialog.HMElement.GetType() == typeof(HMDeviceChannel) ||
                             dataPointDialog.HMElement.GetType() == typeof(HMDeviceDataPoint))
                         {
                             success = hmWrapper.SetState(dataPointDialog.HMElement, dataPointDialog.ValueToSet);
                         }
                         else
                         {
-                            MessageBox.Show(String.Format("Was not able to operate a type of {0}", dataPointDialog.HMElement.GetType().Name), 
+                            MessageBox.Show(String.Format("Was not able to operate a type of {0}", dataPointDialog.HMElement.GetType().Name),
                                 "Type to set unknown...", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
                             return;
                         }
@@ -227,7 +237,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             try
             {
-                if(hmWrapper != null)
+                if (hmWrapper != null)
                 {
                     hmWrapper.SetMessages();
                 }
@@ -246,7 +256,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
         private void txtConnect_KeyUp(object sender, KeyEventArgs e)
         {
-            if(e.KeyCode == Keys.Enter)
+            if (e.KeyCode == Keys.Enter)
             {
                 btnConnect_Click(sender, null);
             }

@@ -28,6 +28,9 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         private string xmlApiMethodMessage = "systemNotification";
         private string xmlApiMethodMessageSet = "systemNotificationClear";
 
+        private List<string> log = new List<string>();
+        public string[] Log { get { return log.ToArray(); } }
+
         private Uri HMUrl;
 
         private List<string> fastUpdateDevices = new List<string>();
@@ -332,30 +335,40 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                                 // iterating data points
                                 foreach (XmlElement pointElement in chanElement.ChildNodes)
                                 {
-                                    HMDeviceDataPoint dataPoint = new HMDeviceDataPoint()
+                                    try
                                     {
-                                        InternalId = int.Parse(pointElement.GetAttribute("ise_id")),
-                                        InternalIdParent = chanIseId,
-                                        Type = pointElement.GetAttribute("type"),
-                                        LastUpdateTimeStamp = long.Parse(pointElement.GetAttribute("timestamp")),
-                                        ValueString = pointElement.GetAttribute("value"),
-                                        ValueType = pointElement.GetAttribute("valuetype"),
-                                        ValueUnit = pointElement.GetAttribute("valueunit")
-                                    };
-
-                                    channel.AddDataPoint(dataPoint.Type, dataPoint);
+                                        HMDeviceDataPoint dataPoint = new HMDeviceDataPoint()
+                                        {
+                                            InternalId = int.Parse(pointElement.GetAttribute("ise_id")),
+                                            InternalIdParent = chanIseId,
+                                            Type = pointElement.GetAttribute("type"),
+                                            LastUpdateTimeStamp = long.Parse(pointElement.GetAttribute("timestamp")),
+                                            ValueString = pointElement.GetAttribute("value"),
+                                            ValueType = pointElement.GetAttribute("valuetype"),
+                                            ValueUnit = pointElement.GetAttribute("valueunit")
+                                        };
+                                        channel.AddDataPoint(dataPoint.Type, dataPoint);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        WriteInternalLog("DataPoint failed: " + ex.Message, true);
+                                        // well, maybe there was an datapoint that could not be created 
+                                        // due to missing information
+                                    }
                                 }
                             }
                         }
-                        catch
+                        catch (Exception ex)
                         {
+                            WriteInternalLog("Channel failed: " + ex.Message, true);
                             // well, maybe there was an channel that is not listed in device list
                             // no problem, we'll just ignore it at this point
                         }
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    WriteInternalLog("Device failed: " + ex.Message, true);
                     // well, maybe there was an device that is not listed in device list
                     // no problem, we'll just ignore it at this point
                 }
@@ -769,6 +782,11 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             }
 
             return DateTime.MinValue;
+        }
+
+        private void WriteInternalLog(string message, bool isError)
+        {
+            log.Add(String.Format("{0}-[{1}]: {2}", DateTime.Now, isError ? "ERR" : "INF", message));
         }
 
         #endregion
