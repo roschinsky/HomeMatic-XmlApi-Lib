@@ -309,11 +309,15 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <param name="xmlStates">XML data for states</param>
         private void UpdateStates(XmlDocument xmlStates)
         {
+            string currentElementPlain = String.Empty;
+
             // iterating devices
             foreach (XmlElement devElement in xmlStates.DocumentElement.ChildNodes)
             {
                 try
                 {
+                    currentElementPlain = devElement.InnerXml.Length >= 100 ? devElement.InnerXml.Substring(0, 100) : devElement.InnerXml;
+
                     int devIseId = int.Parse(devElement.GetAttribute("ise_id"));
                     // looking for existing device
                     HMDevice device = devices.First(d => devIseId == d.InternalId);
@@ -323,6 +327,8 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     {
                         try
                         {
+                            currentElementPlain = chanElement.InnerXml.Length >= 100 ? chanElement.InnerXml.Substring(0, 100) : chanElement.InnerXml;
+
                             int chanIseId = int.Parse(chanElement.GetAttribute("ise_id"));
                             // looking for existing channel
                             HMDeviceChannel channel = device.Channels.First(c => chanIseId == c.InternalId);
@@ -360,7 +366,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                         }
                         catch (Exception ex)
                         {
-                            WriteInternalLog("Channel failed: " + ex.Message, true);
+                            WriteInternalLog("Channel failed: " + ex.Message + "\n  --- " + currentElementPlain, true);
                             // well, maybe there was an channel that is not listed in device list
                             // no problem, we'll just ignore it at this point
                         }
@@ -368,7 +374,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 }
                 catch (Exception ex)
                 {
-                    WriteInternalLog("Device failed: " + ex.Message, true);
+                    WriteInternalLog("Device failed: " + ex.Message + "\n  --- " + currentElementPlain, true);
                     // well, maybe there was an device that is not listed in device list
                     // no problem, we'll just ignore it at this point
                 }
