@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -22,6 +23,10 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     txtConnect.Text = Properties.Settings.Default.HMDefaultUrl;
                     txtConnect_Enter(null, null);
                 }
+                else
+                {
+                    txtConnect.Text = Properties.Resources.txtConnectDefault;
+                }
 
                 // Gets all fast update devices or channels from config
                 if (!String.IsNullOrWhiteSpace(Properties.Settings.Default.HMFastUpdate))
@@ -36,73 +41,72 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Processing configuration failed...\n" + ex.Message, MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-        private void txtConnect_Enter(object sender, EventArgs e)
-        {
-            if (txtConnect.ForeColor != SystemColors.WindowText)
-            {
-                txtConnect.ForeColor = SystemColors.WindowText;
-                txtConnect.AutoCompleteSource = AutoCompleteSource.AllUrl;
+                MessageBox.Show(ex.Message, "Processing configuration failed...", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void btnConnect_Click(object sender, EventArgs e)
         {
+            Stopwatch sw = new Stopwatch();
+
             try
-            {
-                if (hmWrapper == null)
-                {
-                    hmWrapper = new HMApiWrapper(new Uri(txtConnect.Text), false, false);
-                }
+            {                
+                sw.Start();
+                hmWrapper = new HMApiWrapper(new Uri(txtConnect.Text), false, false);
+                sw.Stop();
 
                 Properties.Settings.Default.HMDefaultUrl = txtConnect.Text.Trim();
                 Properties.Settings.Default.Save();
 
-                foreach (string fastUpdate in hmFastUpdates)
-                {
-                    hmWrapper.FastUpdateDeviceSetup(fastUpdate);
-                }
-
                 RefreshTreeView();
+                EnableButtonsWhenConnected();
 
-                string log = String.Empty;
-                foreach(string logEntry in hmWrapper.Log)
-                {
-                    log += logEntry + Environment.NewLine;
-                }
-
-                MessageBox.Show(log);
+                WriteStatus("Connected! Got all the devices - now click the Update button!",
+                    String.Format("*** {0}: Connected to Homematic CCU2 at {1} ***", DateTime.Now, hmWrapper.HmUrl),
+                    sw.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Connect to HMC failed...\n" + ex.Message, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                WriteStatus("Connect failed!",
+                    String.Format("*** {0}: Connect to Homematic CCU2 at {1} failed ***", DateTime.Now, txtConnect.Text),
+                    sw.ElapsedMilliseconds);
+                MessageBox.Show(ex.Message, "Connect to HMC failed...", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void btnRequestHighPrioUpdate_Click(object sender, EventArgs e)
+        private void btnUpdateRequest_Click(object sender, EventArgs e)
         {
             try
             {
                 if (hmWrapper != null)
                 {
+                    // Setup wrapper with items from fast update list
+                    foreach (string fastUpdate in hmFastUpdates)
+                    {
+                        hmWrapper.FastUpdateDeviceSetup(fastUpdate);
+                    }
+
+                    Stopwatch sw = new Stopwatch();
+                    sw.Start();
                     hmWrapper.UpdateStates(checkBoxFastUpdateDevices.Checked);
+                    sw.Stop();
+
+                    WriteStatus(String.Format("Update done {0}", checkBoxFastUpdateDevices.Checked ? "fast" : "full"),
+                        String.Format("- UPDATE({0}) @ {1}: {2}ms", checkBoxFastUpdateDevices.Checked ? "fast" : "full", DateTime.Now, sw.ElapsedMilliseconds),
+                        sw.ElapsedMilliseconds);
+
                     RefreshTreeView();
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "High-Prio update failed...\n" + ex.Message, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message, "Update failed...", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void RefreshTreeView()
         {
             treeView.Nodes.Clear();
-
-            hmWrapper.UpdateStates(checkBoxFastUpdateDevices.Checked);
 
             if (hmWrapper != null && hmWrapper.Devices.Count > 0)
             {
@@ -129,6 +133,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     }
                 }
 
+                devNode.Expand();
                 treeView.Nodes.Add(devNode);
             }
 
@@ -145,6 +150,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     varNodeParent.Nodes.Add(varNode);
                 }
 
+                varNodeParent.Expand();
                 treeView.Nodes.Add(varNodeParent);
             }
 
@@ -161,6 +167,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     msgNodeParent.Nodes.Add(msgNode);
                 }
 
+                msgNodeParent.Expand();
                 treeView.Nodes.Add(msgNodeParent);
             }
 
@@ -168,24 +175,31 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             {
                 MessageBox.Show("Connect to HMC seems to be okay but there are no devices.", "No devices found...", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+
+            foreach (string logEntry in hmWrapper.Log)
+            {
+                richTextBoxLog.AppendText(logEntry);
+            }
         }
 
         private void treeView_DoubleClick(object sender, EventArgs e)
         {
             try
             {
-                HMBase hmElement = treeView.SelectedNode.Tag as HMBase;
-                if (hmElement != null)
+                if (treeView.SelectedNode != null && treeView.SelectedNode.Tag != null)
                 {
-                    DialogHMData dataPointDialog = new DialogHMData(hmElement);
-                    dataPointDialog.FormClosing += DataPointDialog_FormClosing;
-                    dataPointDialog.ShowDialog();
+                    HMBase hmElement = treeView.SelectedNode.Tag as HMBase;
+                    if (hmElement != null)
+                    {
+                        DialogHMData dataPointDialog = new DialogHMData(hmElement);
+                        dataPointDialog.FormClosing += DataPointDialog_FormClosing;
+                        dataPointDialog.ShowDialog();
+                    }
                 }
-
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error obtaining channel...\n" + ex.Message, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message, "Error obtaining Homematic element...", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -200,29 +214,32 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 else
                 {
                     DialogHMData dataPointDialog = sender as DialogHMData;
+                    Stopwatch sw = new Stopwatch();
                     if (dataPointDialog != null && dataPointDialog.ValueWasSet && dataPointDialog.HMElement != null)
                     {
-                        bool success = false;
+                        bool wasSuccessful = false;
                         if (dataPointDialog.HMElement.GetType() == typeof(HMSystemVariable))
                         {
-                            success = hmWrapper.SetVariable(dataPointDialog.HMElement, dataPointDialog.ValueToSet);
+                            sw.Start();
+                            wasSuccessful = hmWrapper.SetVariable(dataPointDialog.HMElement, dataPointDialog.ValueToSet);
+                            sw.Stop();
                         }
                         else if (dataPointDialog.HMElement.GetType() == typeof(HMDeviceChannel) ||
                             dataPointDialog.HMElement.GetType() == typeof(HMDeviceDataPoint))
                         {
-                            success = hmWrapper.SetState(dataPointDialog.HMElement, dataPointDialog.ValueToSet);
+                            sw.Start();
+                            wasSuccessful = hmWrapper.SetState(dataPointDialog.HMElement, dataPointDialog.ValueToSet);
+                            sw.Stop();
                         }
                         else
                         {
-                            MessageBox.Show(String.Format("Was not able to operate a type of {0}", dataPointDialog.HMElement.GetType().Name),
-                                "Type to set unknown...", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                            WriteStatus(String.Format("Was not able to operate a type of {0}", dataPointDialog.HMElement.GetType().Name), null, 0);
                             return;
                         }
 
-                        MessageBox.Show(String.Format("Operation result: {0}", success ? "SUCCESS" : "FAILED"),
-                            String.Format("Setting {0}...", dataPointDialog.HMElement.GetType().Name),
-                            MessageBoxButtons.OK, success ? MessageBoxIcon.Information : MessageBoxIcon.Error);
-
+                        WriteStatus(String.Format("Operation of {0} {1}", dataPointDialog.HMElement.GetType().Name, wasSuccessful ? "successful" : "failed"),
+                            String.Format("- OPERATE({0}) @ {1}: Executed in {2}ms", dataPointDialog.HMElement.Address, DateTime.Now, sw.ElapsedMilliseconds),
+                           sw.ElapsedMilliseconds);
                         RefreshTreeView();
                     }
                 }
@@ -244,7 +261,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Clearing messages failed...\n" + ex.Message, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(ex.Message, "Clearing messages failed...", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -260,6 +277,72 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             {
                 btnConnect_Click(sender, null);
             }
+        }
+        private void txtConnect_Enter(object sender, EventArgs e)
+        {
+            if (txtConnect.ForeColor != SystemColors.WindowText)
+            {
+                txtConnect.ForeColor = SystemColors.WindowText;
+                txtConnect.AutoCompleteSource = AutoCompleteSource.AllUrl;
+                txtConnect.Text = String.Empty;
+            }
+            btnConnect.Enabled = true;
+        }
+
+        private void txtConnect_Leave(object sender, EventArgs e)
+        {
+            if(String.IsNullOrWhiteSpace(txtConnect.Text))
+            {
+                if (Properties.Settings.Default.UseDefaultUrl && !String.IsNullOrWhiteSpace(Properties.Settings.Default.HMDefaultUrl))
+                {
+                    txtConnect.Text = Properties.Settings.Default.HMDefaultUrl;
+                }
+                else
+                {
+                    txtConnect.ForeColor = SystemColors.ControlDark;
+                    txtConnect.Text = Properties.Resources.txtConnectDefault;
+                    btnConnect.Enabled = false;
+                }
+            }
+        }
+
+        private void WriteStatus(string statusMessage, string logMessage, long executionTime)
+        {
+            if(!String.IsNullOrWhiteSpace(statusMessage))
+            {
+                toolStripStatusLabel1.Text = statusMessage;
+            }
+
+            if(!String.IsNullOrWhiteSpace(logMessage))
+            {
+                richTextBoxLog.AppendText(logMessage + Environment.NewLine);
+            }
+
+            if(executionTime > 0)
+            {
+                toolStripStatusLabel2.Text = String.Format("Last execution in {0}ms", executionTime);
+            }
+        }
+
+        private void btnAddFastUpdateDevice_Click(object sender, EventArgs e)
+        {
+            if(treeView.SelectedNode != null && treeView.SelectedNode.Tag != null)
+            {
+                HMBase hmElement = treeView.SelectedNode.Tag as HMBase;
+                if(hmElement != null && !String.IsNullOrWhiteSpace(hmElement.Address) && !hmFastUpdates.Contains(hmElement.Address))
+                {
+                    listBoxFastUpdateDevices.Items.Add(hmElement.Address.Trim());
+                    hmFastUpdates.Add(hmElement.Address.Trim());
+                }
+            }
+        }
+
+        private void EnableButtonsWhenConnected()
+        {
+            btnAddFastUpdateDevice.Enabled = true;
+            btnMessagesClear.Enabled = true;
+            btnUpdateRequest.Enabled = true;
+            checkBoxFastUpdateDevices.Enabled = true;
         }
     }
 }
