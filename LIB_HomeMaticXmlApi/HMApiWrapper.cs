@@ -31,7 +31,8 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         private List<string> log = new List<string>();
         public string[] Log { get { return log.ToArray(); } }
 
-        private Uri HMUrl;
+        private Uri hmUrl;
+        public Uri HmUrl { get { return hmUrl; } }
 
         private List<string> fastUpdateDevices = new List<string>();
         public List<string> FastUpdateDevices { get { return fastUpdateDevices; } }
@@ -53,7 +54,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <param name="homeMaticUri">Uri to HomeMatic</param>
         public HMApiWrapper(Uri homeMaticUri)
         {
-            HMUrl = homeMaticUri;
+            hmUrl = homeMaticUri;
             Initialize(false, false);
         }
 
@@ -66,7 +67,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <param name="initializeWithVariables">Set to true if you want to initialize the wrapper with HomeMatic system variables</param>
         public HMApiWrapper(Uri homeMaticUri, bool initializeWithStates, bool initializeWithVariables)
         {
-            HMUrl = homeMaticUri;
+            hmUrl = homeMaticUri;
             Initialize(initializeWithStates, initializeWithVariables);
         }
 
@@ -320,55 +321,91 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
                     int devIseId = int.Parse(devElement.GetAttribute("ise_id"));
                     // looking for existing device
-                    HMDevice device = devices.First(d => devIseId == d.InternalId);
+                    HMDevice device;
 
-                    // iterating channels
-                    foreach (XmlElement chanElement in devElement.ChildNodes)
+                    try { device = devices.First(d => devIseId == d.InternalId); }
+                    catch { device = null; }
+
+                    if (device != null)
                     {
-                        try
+
+                        // iterating channels
+                        foreach (XmlElement chanElement in devElement.ChildNodes)
                         {
-                            currentElementPlain = chanElement.InnerXml.Length >= 100 ? chanElement.InnerXml.Substring(0, 100) : chanElement.InnerXml;
-
-                            int chanIseId = int.Parse(chanElement.GetAttribute("ise_id"));
-                            // looking for existing channel
-                            HMDeviceChannel channel = device.Channels.First(c => chanIseId == c.InternalId);
-
-                            if (channel != null)
+                            try
                             {
-                                // clear all data points to create new
-                                channel.DataPoints.Clear();
+                                currentElementPlain = chanElement.InnerXml.Length >= 100 ? chanElement.InnerXml.Substring(0, 100) : chanElement.InnerXml;
+
+                                int chanIseId = int.Parse(chanElement.GetAttribute("ise_id"));
+
+                                // looking for existing channel
+                                HMDeviceChannel channel;
+
+                                try { channel = device.Channels.First(c => chanIseId == c.InternalId); }
+                                catch { channel = null; }
+
+                                if (channel == null && String.Concat(chanElement.GetAttribute("name")).Contains(device.Name + ":0"))
+                                {
+                                    // create new channel and add to device
+                                    channel = new HMDeviceChannel()
+                                    {
+                                        Name = "DeviceRoot",
+                                        Address = String.Concat(device.Address, ":0"),
+                                        InternalId = int.Parse(chanElement.GetAttribute("ise_id")),
+                                    };
+                                    device.AddChannel(channel);
+                                }
+                                else if (channel == null)
+                                {
+                                    // create new channel and add to device
+                                    channel = new HMDeviceChannel()
+                                    {
+                                        Name = chanElement.GetAttribute("name"),
+                                        Address = chanElement.GetAttribute("address"),
+                                        InternalId = int.Parse(chanElement.GetAttribute("ise_id")),
+                                    };
+                                    device.AddChannel(channel);
+                                }
+                                else
+                                {
+                                    // clear all data points to create new
+                                    channel.DataPoints.Clear();
+                                }
 
                                 // iterating data points
-                                foreach (XmlElement pointElement in chanElement.ChildNodes)
+                                if (channel != null)
                                 {
-                                    try
+                                    foreach (XmlElement pointElement in chanElement.ChildNodes)
                                     {
-                                        HMDeviceDataPoint dataPoint = new HMDeviceDataPoint()
+                                        try
                                         {
-                                            InternalId = int.Parse(pointElement.GetAttribute("ise_id")),
-                                            InternalIdParent = chanIseId,
-                                            Type = pointElement.GetAttribute("type"),
-                                            LastUpdateTimeStamp = long.Parse(pointElement.GetAttribute("timestamp")),
-                                            ValueString = pointElement.GetAttribute("value"),
-                                            ValueType = pointElement.GetAttribute("valuetype"),
-                                            ValueUnit = pointElement.GetAttribute("valueunit")
-                                        };
-                                        channel.AddDataPoint(dataPoint.Type, dataPoint);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        WriteInternalLog("DataPoint failed: " + ex.Message, true);
-                                        // well, maybe there was an datapoint that could not be created 
-                                        // due to missing information
+                                            HMDeviceDataPoint dataPoint = new HMDeviceDataPoint()
+                                            {
+                                                InternalId = int.Parse(pointElement.GetAttribute("ise_id")),
+                                                InternalIdParent = chanIseId,
+                                                Type = pointElement.GetAttribute("type"),
+                                                LastUpdateTimeStamp = long.Parse(pointElement.GetAttribute("timestamp")),
+                                                ValueString = pointElement.GetAttribute("value"),
+                                                ValueType = pointElement.GetAttribute("valuetype"),
+                                                ValueUnit = pointElement.GetAttribute("valueunit")
+                                            };
+                                            channel.AddDataPoint(dataPoint.Type, dataPoint);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            WriteInternalLog("DataPoint failed: " + ex.Message, true);
+                                            // well, maybe there was an datapoint that could not be created 
+                                            // due to missing information
+                                        }
                                     }
                                 }
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            WriteInternalLog("Channel failed: " + ex.Message + "\n  --- " + currentElementPlain, true);
-                            // well, maybe there was an channel that is not listed in device list
-                            // no problem, we'll just ignore it at this point
+                            catch (Exception ex)
+                            {
+                                WriteInternalLog("Channel failed: " + ex.Message + "\n  --- " + currentElementPlain, true);
+                                // well, maybe there was an channel that is not listed in device list
+                                // no problem, we'll just ignore it at this point
+                            }
                         }
                     }
                 }
@@ -562,10 +599,10 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             XmlDocument result = new XmlDocument();
 
-            if (HMUrl != null)
+            if (hmUrl != null)
             {
                 WebClient apiClient = new WebClient();
-                result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi", HMUrl, xmlApiDefaultPath, apiMethod)));
+                result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi", hmUrl, xmlApiDefaultPath, apiMethod)));
 
                 if (result != null && result.DocumentElement != null)
                 {
@@ -587,10 +624,10 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             XmlDocument result = new XmlDocument();
 
-            if (HMUrl != null)
+            if (hmUrl != null)
             {
                 WebClient apiClient = new WebClient();
-                result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi?{3}={4}", HMUrl, xmlApiDefaultPath, apiMethod, parameter, parameterValue)));
+                result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi?{3}={4}", hmUrl, xmlApiDefaultPath, apiMethod, parameter, parameterValue)));
 
                 if (result != null && result.DocumentElement != null)
                 {
@@ -614,10 +651,10 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             XmlDocument result = new XmlDocument(); 
 
-            if (HMUrl != null)
+            if (hmUrl != null)
             {
                 WebClient apiClient = new WebClient();
-                result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi?{3}={4}&{5}={6}", HMUrl, xmlApiDefaultPath, apiMethod, parameter1, parameterValue1, parameter2, parameterValue2)));
+                result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi?{3}={4}&{5}={6}", hmUrl, xmlApiDefaultPath, apiMethod, parameter1, parameterValue1, parameter2, parameterValue2)));
 
                 if (result != null && result.DocumentElement != null)
                 {
