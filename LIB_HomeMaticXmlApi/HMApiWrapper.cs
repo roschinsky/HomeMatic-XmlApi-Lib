@@ -227,7 +227,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     Name = msgElement.GetAttribute("name"),
                     InternalId = int.Parse(msgElement.GetAttribute("ise_id")),
                     Type = msgElement.GetAttribute("type"),
-                    OccuredOnTimeStamp = long.Parse(msgElement.GetAttribute("timestamp"))
+                    OccurredOnTimeStamp = long.Parse(msgElement.GetAttribute("timestamp"))
                 };
 
                 messages.Add(message);
