@@ -3,7 +3,7 @@ Library that wraps the HomeMatic XML-API Addon in C# for use in .NET projects
 
 The XML-API Addon (http://www.homematic-inside.de/software/xml-api) is a free collection of scripts, packaged as installable addon for the 'HomeMatic' home automation system. Once installed to a CCU, the package provides a very simple but broad and powerful API as an alternative for the included XML-RPC interface.
 
-The HomeMatic-XmlApi-Lib is intended to close the gap for developers using a .NET environment for their projects.
+The HomeMatic-XmlApi-Lib is intended to workaround the known issues with the native XML-RPC API provided by Homematic CCU2 and to close the gap for developers using a .NET environment for their projects.
 
 ## Contents
 
