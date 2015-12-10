@@ -21,7 +21,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 if (Properties.Settings.Default.UseDefaultUrl && !String.IsNullOrWhiteSpace(Properties.Settings.Default.HMDefaultUrl))
                 {
                     txtConnect.Text = Properties.Settings.Default.HMDefaultUrl;
-                    txtConnect_Enter(null, null);
+                    txtConnect.ForeColor = SystemColors.WindowText;
                 }
                 else
                 {
@@ -267,7 +267,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
         private void linkLabelGitHub_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            try { System.Diagnostics.Process.Start(linkLabelGitHub.Text); }
+            try { Process.Start(linkLabelGitHub.Text); }
             catch { }
         }
 
