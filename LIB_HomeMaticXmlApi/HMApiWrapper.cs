@@ -150,16 +150,38 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             // iterating variables
             foreach (XmlElement varElement in xmlVariables.DocumentElement.ChildNodes)
             {
-                HMSystemVariable variable = new HMSystemVariable()
+                try
                 {
-                    InternalId = int.Parse(varElement.GetAttribute("ise_id")),
-                    Name = varElement.GetAttribute("name"),
-                    Type = varElement.GetAttribute("type"),
-                    Value = varElement.GetAttribute("value"),
-                    LastUpdateTimeStamp = long.Parse(varElement.GetAttribute("timestamp"))
-                };
+                    HMSystemVariable variable = new HMSystemVariable()
+                    {
+                        InternalId = int.Parse(varElement.GetAttribute("ise_id")),
+                        Name = varElement.GetAttribute("name"),
+                        ValueType = varElement.GetAttribute("type"),
+                        ValueUnit = varElement.GetAttribute("unit"),
+                        ValueString = varElement.GetAttribute("value"),
+                        IsLogged = bool.Parse(varElement.GetAttribute("logged")),
+                        IsVisible = bool.Parse(varElement.GetAttribute("visible")),
+                        LastUpdateTimeStamp = long.Parse(varElement.GetAttribute("timestamp"))
+                    };
 
-                variables.Add(variable);
+                    if (variable != null && !String.IsNullOrEmpty(variable.ValueType))
+                    {
+                        if (int.Parse(variable.ValueType) == 16)
+                        {
+                            variable.SetValuesIndex(varElement.GetAttribute("value_list"));
+                        }
+                        else if (int.Parse(variable.ValueType) == 2)
+                        {
+                            variable.SetValuesIndex(varElement.GetAttribute("value_name_1"), varElement.GetAttribute("value_name_0"));
+                        }
+                    }
+
+                    variables.Add(variable);
+                }
+                catch (Exception)
+                {
+                    // Ignore mismatched variable
+                }
             }
         }
 

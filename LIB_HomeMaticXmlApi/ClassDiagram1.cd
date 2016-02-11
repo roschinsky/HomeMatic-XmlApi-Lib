@@ -57,6 +57,8 @@
       <Path>
         <Point X="3.938" Y="2.18" />
         <Point X="3.938" Y="3.158" />
+        <Point X="5.659" Y="3.158" Type="JumpStart" />
+        <Point X="5.826" Y="3.158" Type="JumpEnd" />
         <Point X="6.125" Y="3.158" />
         <Point X="6.125" Y="3.5" />
       </Path>
@@ -72,6 +74,8 @@
       <Path>
         <Point X="4.125" Y="2.18" />
         <Point X="4.125" Y="3.002" />
+        <Point X="5.451" Y="3.002" Type="JumpStart" />
+        <Point X="5.618" Y="3.002" Type="JumpEnd" />
         <Point X="8.125" Y="3.002" />
         <Point X="8.125" Y="3.5" />
       </Path>
@@ -87,12 +91,14 @@
       <Path>
         <Point X="4.625" Y="2.18" />
         <Point X="4.625" Y="2.637" />
+        <Point X="4.964" Y="2.637" Type="JumpStart" />
+        <Point X="5.131" Y="2.637" Type="JumpEnd" />
         <Point X="6.125" Y="2.637" />
         <Point X="6.125" Y="2.377" />
       </Path>
     </InheritanceLine>
     <TypeIdentifier>
-      <HashCode>AAAAAAAAAAAAAAAEAAAAAAAAAACEAAAAAAAAAAAAAAA=</HashCode>
+      <HashCode>AAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAwAAAAAAAAAAA=</HashCode>
       <FileName>HMSystemMessage.cs</FileName>
     </TypeIdentifier>
   </Class>
@@ -101,13 +107,13 @@
     <InheritanceLine Type="TRoschinsky.Lib.HomeMaticXmlApi.HMBase" ManuallyRouted="true" FixedFromPoint="true" FixedToPoint="true">
       <Path>
         <Point X="4.438" Y="2.18" />
-        <Point X="4.438" Y="2.793" />
-        <Point X="8.125" Y="2.793" />
-        <Point X="8.125" Y="2.569" />
+        <Point X="4.558" Y="2.27" Type="JumpStart" />
+        <Point X="4.692" Y="2.37" Type="JumpEnd" />
+        <Point X="8.125" Y="4.944" />
       </Path>
     </InheritanceLine>
     <TypeIdentifier>
-      <HashCode>AAAAAAAAAAAAAAAEAAAAAAAYAAAAAAAAAAAgAAAAAAA=</HashCode>
+      <HashCode>AQAIACiAAAAAEAAEIAAAAAAYAAAAAAEACAAgAAAAEAA=</HashCode>
       <FileName>HMSystemVariable.cs</FileName>
     </TypeIdentifier>
   </Class>

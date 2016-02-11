@@ -67,7 +67,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
         public override string ToString()
         {
-            return String.Format("DDP >> {0} - Value '{1}{3}' @ {2}", Type, Value, LastUpdate, (String.IsNullOrEmpty(ValueUnit) ? String.Empty : " " + ValueUnit));
+            return String.Format("DDP: {0} >> Value '{1}{3}' @ {2}", Type, Value, LastUpdate, (String.IsNullOrEmpty(ValueUnit) ? String.Empty : " " + ValueUnit));
         }
     }
 }
