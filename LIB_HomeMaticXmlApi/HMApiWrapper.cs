@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Xml;
@@ -557,7 +558,10 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 }
 
                 string internalId = hmElement.InternalId.ToString();
-                string stringRepresentationOfValue = Convert.ToString(value).ToLower();
+
+                NumberFormatInfo numFormat = new NumberFormatInfo();
+                numFormat.NumberDecimalSeparator = ".";
+                string stringRepresentationOfValue = Convert.ToString(value, numFormat).ToLower();
 
                 // sending change of state request to HomeMatic XmlApi
                 XmlDocument xmlSetStates = GetApiData(xmlApiMethodStateSet, "ise_id", internalId, "new_value", stringRepresentationOfValue);
