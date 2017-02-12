@@ -729,8 +729,6 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     HMDevice device = GetDeviceByAddress(address);
                     if (device != null && device.Channels.Count > 0)
                     {
-                        UpdateState(device);
-                        device = GetDeviceByAddress(address);
                         return device.Channels.First(c => c.Address == address);
                     }
                 }
@@ -756,8 +754,6 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 HMDeviceChannel channel = GetChannelByAddress(address);
                 if (channel != null && channel.DataPoints.ContainsKey(valueTypeName))
                 {
-                    UpdateState(channel);
-                    channel = GetChannelByAddress(address);
                     return channel.DataPoints[valueTypeName];
                 }
 
