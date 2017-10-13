@@ -265,11 +265,15 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             // requesting system messages list from HomeMatic XmlApi
             XmlDocument xmlMessages = GetApiData(xmlApiMethodMessageSet);
 
-            // wait a little while
-            System.Threading.Thread.Sleep(250);
+			// wait a little while
+#if NETSTANDARD1_3
+			System.Threading.Tasks.Task.Delay(250);
+#else
+			System.Threading.Thread.Sleep(250);
+#endif
 
-            // update messages
-            UpdateMessages();
+			// update messages
+			UpdateMessages();
         }
 
         #endregion
@@ -627,10 +631,20 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
             if (hmUrl != null)
             {
-                WebClient apiClient = new WebClient();
-                result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi", hmUrl, xmlApiDefaultPath, apiMethod)));
-
-                if (result != null && result.DocumentElement != null)
+#if NETSTANDARD1_3
+				string strErg = null;
+				using(System.Net.Http.HttpClient apiClient = new System.Net.Http.HttpClient()) {
+					strErg= apiClient.GetStringAsync($"{hmUrl}{xmlApiDefaultPath}/{apiMethod}.cgi").ConfigureAwait(false).GetAwaiter().GetResult();
+				}
+				if(strErg != null) {
+					result.LoadXml(strErg);
+				}
+#else
+				using(WebClient apiClient = new WebClient()) {
+					result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi", hmUrl, xmlApiDefaultPath, apiMethod)));
+				}
+#endif
+				if (result != null && result.DocumentElement != null)
                 {
                     return result;
                 }
@@ -652,10 +666,20 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
             if (hmUrl != null)
             {
-                WebClient apiClient = new WebClient();
-                result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi?{3}={4}", hmUrl, xmlApiDefaultPath, apiMethod, parameter, parameterValue)));
-
-                if (result != null && result.DocumentElement != null)
+#if NETSTANDARD1_3
+				string strErg = null;
+				using(System.Net.Http.HttpClient apiClient = new System.Net.Http.HttpClient()) {
+					strErg = apiClient.GetStringAsync($"{hmUrl}{xmlApiDefaultPath}/{apiMethod}.cgi?{parameter}={parameterValue}").ConfigureAwait(false).GetAwaiter().GetResult();
+				}
+				if(strErg != null) {
+					result.LoadXml(strErg);
+				}
+#else
+				using(WebClient apiClient = new WebClient()) {
+					result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi?{3}={4}", hmUrl, xmlApiDefaultPath, apiMethod, parameter, parameterValue)));
+				}
+#endif
+				if (result != null && result.DocumentElement != null)
                 {
                     return result;
                 }
@@ -679,10 +703,21 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
             if (hmUrl != null)
             {
-                WebClient apiClient = new WebClient();
-                result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi?{3}={4}&{5}={6}", hmUrl, xmlApiDefaultPath, apiMethod, parameter1, parameterValue1, parameter2, parameterValue2)));
-
-                if (result != null && result.DocumentElement != null)
+#if NETSTANDARD1_3
+				string strErg = null;
+				using(System.Net.Http.HttpClient apiClient = new System.Net.Http.HttpClient()) {
+					strErg = apiClient.GetStringAsync($"{hmUrl}{xmlApiDefaultPath}/{apiMethod}.cgi?{parameter1}={parameterValue1}&{parameter2}={parameterValue2}")
+						.ConfigureAwait(false).GetAwaiter().GetResult();
+				}
+				if(strErg != null) {
+					result.LoadXml(strErg);
+				}
+#else
+				using(WebClient apiClient = new WebClient()) {
+					result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi?{3}={4}&{5}={6}", hmUrl, xmlApiDefaultPath, apiMethod, parameter1, parameterValue1, parameter2, parameterValue2)));
+				}
+#endif
+				if (result != null && result.DocumentElement != null)
                 {
                     return result;
                 }
@@ -834,9 +869,9 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             fastUpdateDevices.Clear();
         }
 
-        #endregion
+#endregion
 
-        #region Common helper
+#region Common helper
 
         /// <summary>
         /// Converts UNIX timestamp to valid DateTime
@@ -858,6 +893,6 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             log.Add(String.Format("{0}-[{1}]: {2}", DateTime.Now, isError ? "ERR" : "INF", message));
         }
 
-        #endregion
+#endregion
     }
 }
