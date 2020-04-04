@@ -21,6 +21,20 @@ A simple Windows Forms application that'll use the library to output all connect
 
 You can also browse the internal data structure of Homematic devices, channels and its data points. Channels and data points can be set by double-clicking the item in the treeview. You'll need to enter values to set as plain text, like 'true' or '21.5' This will work with variables as well, so you're able to set the values of variables by using this library.
 
+### STD_HomeMaticXmlApi
+
+.NET Standard 1.3 implementation (use with systems not supporting .NET Standard 2.0)
+Async calls are simply wrapped with .ConfigureAwait(false).GetResult()
+Check HMApiWrapper.cs for GetApiData (3 methods)
+
+### STD_HomeMaticXmlApi2
+
+.NET Standard 2.0 implementation
+
+### TST_CoreHMXmlApi
+
+.NET Core console app testing basic functionality of the 1.3 .NET Standard implementation
+
 ## Current Version
 
 The current version of HomeMatic-XmlApi-Lib is a plain and early beta release. Most of the functions provided by the XML-API Add-On are supported.

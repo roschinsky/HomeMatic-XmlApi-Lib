@@ -1,11 +1,17 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.27004.2002
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LIB_HomeMaticXmlApi", "LIB_HomeMaticXmlApi\LIB_HomeMaticXmlApi.csproj", "{233BD58B-5EBB-4324-8329-648F40671AF7}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TST_HomeMaticXmlApi", "TST_HomeMaticXmlApi\TST_HomeMaticXmlApi.csproj", "{2F9CA94A-51F8-4D56-9729-8B64F3709DE5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "STD_HomeMaticXmlApi", "STD_HomeMaticXmlApi\STD_HomeMaticXmlApi.csproj", "{4415DA39-0C07-4DD6-89F6-3ED47AE567CF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TST_CoreHMXmlApi", "TST_CoreHMXmlApi\TST_CoreHMXmlApi.csproj", "{91A97540-3231-48D6-9FDB-200FA50CAC8E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "STD_HomeMaticXmlApi2", "STD_HomeMaticXmlApi2\STD_HomeMaticXmlApi2.csproj", "{4FFEF2C1-216D-4D38-BE11-5D7F516C1B33}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,8 +27,23 @@ Global
 		{2F9CA94A-51F8-4D56-9729-8B64F3709DE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2F9CA94A-51F8-4D56-9729-8B64F3709DE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2F9CA94A-51F8-4D56-9729-8B64F3709DE5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4415DA39-0C07-4DD6-89F6-3ED47AE567CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4415DA39-0C07-4DD6-89F6-3ED47AE567CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4415DA39-0C07-4DD6-89F6-3ED47AE567CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4415DA39-0C07-4DD6-89F6-3ED47AE567CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{91A97540-3231-48D6-9FDB-200FA50CAC8E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{91A97540-3231-48D6-9FDB-200FA50CAC8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{91A97540-3231-48D6-9FDB-200FA50CAC8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{91A97540-3231-48D6-9FDB-200FA50CAC8E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4FFEF2C1-216D-4D38-BE11-5D7F516C1B33}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4FFEF2C1-216D-4D38-BE11-5D7F516C1B33}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4FFEF2C1-216D-4D38-BE11-5D7F516C1B33}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4FFEF2C1-216D-4D38-BE11-5D7F516C1B33}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {63FEBA37-1DA0-401C-9286-873C57F95081}
 	EndGlobalSection
 EndGlobal

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+		<PackageId>HomeMaticXmlApi.core2</PackageId>
+		<Authors>Thomas Roschinsky; Manfred Pohler</Authors>
+		<Company />
+		<Product>HomeMaticXmlApi</Product>
+		<Description>.NET Standard 2.0 version of the HomeMaticXmlApi</Description>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<Compile Include="..\LIB_HomeMaticXmlApi\HMApiException.cs" Link="HMApiException.cs" />
+		<Compile Include="..\LIB_HomeMaticXmlApi\HMApiWrapper.cs" Link="HMApiWrapper.cs" />
+		<Compile Include="..\LIB_HomeMaticXmlApi\HMBase.cs" Link="HMBase.cs" />
+		<Compile Include="..\LIB_HomeMaticXmlApi\HMDevice.cs" Link="HMDevice.cs" />
+		<Compile Include="..\LIB_HomeMaticXmlApi\HMDeviceChannel.cs" Link="HMDeviceChannel.cs" />
+		<Compile Include="..\LIB_HomeMaticXmlApi\HMDeviceDataPoint.cs" Link="HMDeviceDataPoint.cs" />
+		<Compile Include="..\LIB_HomeMaticXmlApi\HMSystemMessage.cs" Link="HMSystemMessage.cs" />
+		<Compile Include="..\LIB_HomeMaticXmlApi\HMSystemVariable.cs" Link="HMSystemVariable.cs" />
+	</ItemGroup>
+	
+</Project>
