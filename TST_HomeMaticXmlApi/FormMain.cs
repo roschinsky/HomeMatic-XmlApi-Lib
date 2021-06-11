@@ -50,9 +50,10 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             Stopwatch sw = new Stopwatch();
 
             try
-            {                
+            {
                 sw.Start();
-                hmWrapper = new HMApiWrapper(new Uri(txtConnect.Text), false, false);
+                hmWrapper = new HMApiWrapper(new Uri(txtConnect.Text));
+                hmWrapper.Initialize();
                 sw.Stop();
 
                 Properties.Settings.Default.HMDefaultUrl = txtConnect.Text.Trim();
