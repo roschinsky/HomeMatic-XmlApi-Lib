@@ -305,7 +305,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             var xmlStates = await GetApiDataAsync(xmlApiMethodStateAll);
 
             if (xmlStates != null)
-                UpdateStatesAsync(xmlStates);
+                UpdateStates(xmlStates);
         }
 
         /// <summary>
@@ -329,7 +329,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
 
                 if (xmlStates != null)
                 {
-                    UpdateStatesAsync(xmlStates);
+                    UpdateStates(xmlStates);
                     return;
                 }
             }
@@ -342,7 +342,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// Updates the global device list including their channels and data point or state data based on XML input
         /// </summary>
         /// <param name="xmlStates">XML data for states</param>
-        private void UpdateStatesAsync(XmlDocument xmlStates)
+        private void UpdateStates(XmlDocument xmlStates)
         {
             if (xmlStates?.DocumentElement == null)
                 return;
@@ -494,7 +494,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             var xmlStates = await GetApiDataAsync(xmlApiMethodStateSingle, param, iseId.ToString());
 
             if (xmlStates != null)
-                UpdateStatesAsync(xmlStates);
+                UpdateStates(xmlStates);
         }
 
         /// <summary>
