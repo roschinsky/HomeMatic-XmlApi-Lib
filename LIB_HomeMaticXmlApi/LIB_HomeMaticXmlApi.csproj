@@ -32,6 +32,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -39,8 +40,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Helpers\AsyncHelper.cs" />
     <Compile Include="HMApiException.cs" />
     <Compile Include="HMApiWrapper.cs" />
+    <Compile Include="HMApiWrapper.Sync.cs">
+      <DependentUpon>HMApiWrapper.cs</DependentUpon>
+    </Compile>
     <Compile Include="HMDevice.cs" />
     <Compile Include="HMDeviceChannel.cs" />
     <Compile Include="HMDeviceDataPoint.cs" />
@@ -53,9 +58,6 @@
     <None Include="ClassDiagram1.cd" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PostBuildEvent>copy "$(TargetPath)" "$(SolutionDir)..\..\libs\HomeMatic"</PostBuildEvent>
-  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

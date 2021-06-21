@@ -1,75 +1,66 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
-using System.Net;
+using System.Net.Http;
+using System.Threading.Tasks;
 using System.Xml;
+
+// ReSharper disable UnusedMember.Global
+
+// ReSharper disable InconsistentNaming
 
 namespace TRoschinsky.Lib.HomeMaticXmlApi
 {
     /// <summary>
-    /// The Homematic XML-API wrapper core. This class provides you with all the essential methods 
-    /// to talk to a Homematic CCU2 with XML-API v1.10+ add-on installed. Once connected successfully 
+    /// The Homematic XML-API wrapper core. This class provides you with all the essential methods
+    /// to talk to a Homematic CCU2 with XML-API v1.10+ add-on installed. Once connected successfully
     /// to the CCU2 you're able to read and set all the devices including all channels and its data points.
     /// The CCU2s service messages and system variables can be read and cleared/set as well.
-    /// The API wrapper needs to be triggered to take any actions - you'll have to take care of 
-    /// refreshing status values yourself. Due to performance reasons you can choose to simply just 
+    /// The API wrapper needs to be triggered to take any actions - you'll have to take care of
+    /// refreshing status values yourself. Due to performance reasons you can choose to simply just
     /// refresh some explicitly needed devices by adding them to the FastUpdateDevices collection.
     /// </summary>
-    public class HMApiWrapper
+    [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
+    public partial class HMApiWrapper
     {
-        private string xmlApiDefaultPath = "addons/xmlapi";
+        private static readonly HttpClient Client = new HttpClient();
 
-        private string xmlApiMethodDevice = "devicelist";
-        private string xmlApiMethodStateAll = "statelist";
-        private string xmlApiMethodStateSingle = "state";
-        private string xmlApiMethodStateSet = "statechange";
-        private string xmlApiMethodVariable = "sysvarlist";
-        private string xmlApiMethodVariableSet = "statechange";
-        private string xmlApiMethodMessage = "systemNotification";
-        private string xmlApiMethodMessageSet = "systemNotificationClear";
+        private const string xmlApiDefaultPath = "addons/xmlapi";
+        private const string xmlApiMethodDevice = "devicelist";
+        private const string xmlApiMethodStateAll = "statelist";
+        private const string xmlApiMethodStateSingle = "state";
+        private const string xmlApiMethodStateSet = "statechange";
+        private const string xmlApiMethodVariable = "sysvarlist";
+        private const string xmlApiMethodVariableSet = "statechange";
+        private const string xmlApiMethodMessage = "systemNotification";
+        private const string xmlApiMethodMessageSet = "systemNotificationClear";
 
-        private List<string> log = new List<string>();
-        public string[] Log { get { return log.ToArray(); } }
+        private readonly List<string> log = new List<string>();
 
-        private Uri hmUrl;
-        public Uri HmUrl { get { return hmUrl; } }
+        public string[] Log => log.ToArray();
 
-        private List<string> fastUpdateDevices = new List<string>();
-        public List<string> FastUpdateDevices { get { return fastUpdateDevices; } }
+        public Uri HmUrl { get; }
 
-        private List<HMSystemVariable> variables = new List<HMSystemVariable>();
-        public List<HMSystemVariable> Variables { get { return variables; } }
+        public List<string> FastUpdateDevices { get; } = new List<string>();
 
-        private List<HMSystemMessage> messages = new List<HMSystemMessage>();
-        public List<HMSystemMessage> Messages { get { return messages; } }
+        public List<HMSystemVariable> Variables { get; } = new List<HMSystemVariable>();
 
-        private List<HMDevice> devices = new List<HMDevice>();
-        public List<HMDevice> Devices { get { return devices; } }
+        public List<HMSystemMessage> Messages { get; } = new List<HMSystemMessage>();
+
+        public List<HMDevice> Devices { get; private set; } = new List<HMDevice>();
+
+        private bool _initialized;
 
 
         /// <summary>
-        /// Basic constructor of Homematic wrapper. Connects to the XML-API on CCU2 and triggers initialization 
-        /// without retrieving states, variables or messages.
+        /// Basic constructor of Homematic wrapper
         /// </summary>
         /// <param name="homeMaticUri">Uri to HomeMatic</param>
         public HMApiWrapper(Uri homeMaticUri)
         {
-            hmUrl = homeMaticUri;
-            Initialize(false, false);
-        }
-
-        /// <summary>
-        /// Advanced constructor of Homematic wrapper. Connects to the XML-API on CCU2 and lets you choose 
-        /// what types of information (states, variables or messages) you'll initialize
-        /// </summary>
-        /// <param name="homeMaticUri">Uri to HomeMatic</param>
-        /// <param name="initializeWithStates">Set to true if you want to initialize the wrapper with states; operation takes longer but you are able to access states immediately</param>
-        /// <param name="initializeWithVariables">Set to true if you want to initialize the wrapper with HomeMatic system variables</param>
-        public HMApiWrapper(Uri homeMaticUri, bool initializeWithStates, bool initializeWithVariables)
-        {
-            hmUrl = homeMaticUri;
-            Initialize(initializeWithStates, initializeWithVariables);
+            HmUrl = homeMaticUri;
         }
 
         #region Main logic
@@ -77,38 +68,41 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <summary>
         /// Method to initialize the wrapper; gets all available devices and, if needed, states of devices
         /// </summary>
-        /// <param name="fullInit">Update all states initially</param>
-        /// <param name="variablesInit">Obtain all system variables initially</param>
-        private void Initialize(bool fullInit, bool variablesInit)
+        /// <param name="initializeWithStates">Set to true if you want to initialize the wrapper with states; operation takes longer but you are able to access states immediately</param>
+        /// <param name="variablesInit">Set to true if you want to initialize the wrapper with HomeMatic system variables</param>
+        public async Task InitializeAsync(bool initializeWithStates = false, bool variablesInit = false)
         {
-            devices = GetDevices();
-            
-            if(fullInit)
-            {
-                UpdateStates(false);
-            }
+            if (_initialized)
+                return;
 
-            if(variablesInit)
-            {
-                UpdateVariables();
-            }
+            Devices = await GetDevicesAsync();
+
+            if (initializeWithStates)
+                await UpdateStatesAsync(false);
+
+            if (variablesInit)
+                await UpdateVariablesAsync();
+
+            _initialized = true;
         }
 
         /// <summary>
         /// Gets all devices including their channels but without any data point or state data
         /// </summary>
         /// <returns>List containing devices with channels</returns>
-        private List<HMDevice> GetDevices()
+        private async Task<List<HMDevice>> GetDevicesAsync()
         {
-            List<HMDevice> result = new List<HMDevice>();
+            var result = new List<HMDevice>();
 
             // requesting devices list from HomeMatic XmlApi
-            XmlDocument xmlDevices = GetApiData(xmlApiMethodDevice);
+            var xmlDevices = await GetApiDataAsync(xmlApiMethodDevice);
+            if (xmlDevices?.DocumentElement == null)
+                return result;
 
             // iterating devices
             foreach (XmlElement devElement in xmlDevices.DocumentElement.ChildNodes)
             {
-                HMDevice device = new HMDevice()
+                var device = new HMDevice()
                 {
                     Name = devElement.GetAttribute("name"),
                     Address = devElement.GetAttribute("address"),
@@ -119,7 +113,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 // iterating channels
                 foreach (XmlElement chanElement in devElement.ChildNodes)
                 {
-                    HMDeviceChannel channel = new HMDeviceChannel()
+                    var channel = new HMDeviceChannel()
                     {
                         Name = chanElement.GetAttribute("name"),
                         Address = chanElement.GetAttribute("address"),
@@ -140,20 +134,26 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <summary>
         /// Updates the global list of system variables
         /// </summary>
-        public void UpdateVariables()
+        /// <exception cref="HMApiException"><see cref="HMApiWrapper"/> is not initialized</exception>
+        public async Task UpdateVariablesAsync()
         {
+            CheckInitialized();
+
             // requesting system variables list from HomeMatic XmlApi
-            XmlDocument xmlVariables = GetApiData(xmlApiMethodVariable);
+            var xmlVariables = await GetApiDataAsync(xmlApiMethodVariable);
+
+            if (xmlVariables?.DocumentElement == null)
+                return;
 
             // clear current collection
-            variables.Clear();
+            Variables.Clear();
 
             // iterating variables
             foreach (XmlElement varElement in xmlVariables.DocumentElement.ChildNodes)
             {
                 try
                 {
-                    HMSystemVariable variable = new HMSystemVariable()
+                    var variable = new HMSystemVariable()
                     {
                         InternalId = int.Parse(varElement.GetAttribute("ise_id")),
                         Name = varElement.GetAttribute("name"),
@@ -165,19 +165,20 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                         LastUpdateTimeStamp = long.Parse(varElement.GetAttribute("timestamp"))
                     };
 
-                    if (variable != null && !String.IsNullOrEmpty(variable.ValueType))
+                    if (!string.IsNullOrEmpty(variable.ValueType))
                     {
-                        if (int.Parse(variable.ValueType) == 16)
+                        switch (int.Parse(variable.ValueType))
                         {
-                            variable.SetValuesIndex(varElement.GetAttribute("value_list"));
-                        }
-                        else if (int.Parse(variable.ValueType) == 2)
-                        {
-                            variable.SetValuesIndex(varElement.GetAttribute("value_name_1"), varElement.GetAttribute("value_name_0"));
+                            case 16:
+                                variable.SetValuesIndex(varElement.GetAttribute("value_list"));
+                                break;
+                            case 2:
+                                variable.SetValuesIndex(varElement.GetAttribute("value_name_1"), varElement.GetAttribute("value_name_0"));
+                                break;
                         }
                     }
 
-                    variables.Add(variable);
+                    Variables.Add(variable);
                 }
                 catch (Exception)
                 {
@@ -192,33 +193,33 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <param name="hmElement">An HMBase object that represents a system variable</param>
         /// <param name="value">The new value the needs to be assigned to the system variable</param>
         /// <returns></returns>
-        public bool SetVariable(HMBase hmElement, object value)
+        /// <exception cref="HMApiException"><see cref="HMApiWrapper"/> is not initialized</exception>
+        public async Task<bool> SetVariableAsync(HMBase hmElement, object value)
         {
+            CheckInitialized();
+
             try
             {
                 if (hmElement == null || hmElement.GetType() != typeof(HMSystemVariable))
-                {
                     return false;
-                }
 
-                string internalId = hmElement.InternalId.ToString();
-                string stringRepresentationOfValue = Convert.ToString(value).ToLower();
+                var internalId = hmElement.InternalId.ToString();
+                var stringRepresentationOfValue = Convert.ToString(value).ToLower();
 
                 // sending change of variable request to HomeMatic XmlApi
-                XmlDocument xmlSetStates = GetApiData(xmlApiMethodVariableSet, "ise_id", internalId, "new_value", stringRepresentationOfValue);
+                var xmlSetStates = await GetApiDataAsync(xmlApiMethodVariableSet, "ise_id", internalId, "new_value", stringRepresentationOfValue);
+
+                if (xmlSetStates?.DocumentElement == null)
+                    return false;
 
                 // checking results
-                XmlNode resultNode = xmlSetStates.DocumentElement.FirstChild;
+                var resultNode = xmlSetStates.DocumentElement.FirstChild;
                 {
-                    if (resultNode.Name == "changed" && resultNode.Attributes["id"].Value == internalId && resultNode.Attributes["new_value"].Value == stringRepresentationOfValue)
-                    {
-                        UpdateVariables();
-                        return true;
-                    }
-                    else
-                    {
+                    if (resultNode.Name != "changed" || resultNode.Attributes?["id"].Value != internalId || resultNode.Attributes["new_value"].Value != stringRepresentationOfValue)
                         return false;
-                    }
+
+                    await UpdateVariablesAsync();
+                    return true;
                 }
             }
             catch
@@ -234,18 +235,24 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <summary>
         /// Updates the global list of system messages
         /// </summary>
-        public void UpdateMessages()
+        /// <exception cref="HMApiException"><see cref="HMApiWrapper"/> is not initialized</exception>
+        public async Task UpdateMessagesAsync()
         {
+            CheckInitialized();
+
             // requesting system messages list from HomeMatic XmlApi
-            XmlDocument xmlMessages = GetApiData(xmlApiMethodMessage);
+            var xmlMessages = await GetApiDataAsync(xmlApiMethodMessage);
+
+            if (xmlMessages?.DocumentElement == null)
+                return;
 
             // clear current collection
-            messages.Clear();
+            Messages.Clear();
 
             // iterating messages
             foreach (XmlElement msgElement in xmlMessages.DocumentElement.ChildNodes)
             {
-                HMSystemMessage message = new HMSystemMessage()
+                var message = new HMSystemMessage()
                 {
                     Name = msgElement.GetAttribute("name"),
                     InternalId = int.Parse(msgElement.GetAttribute("ise_id")),
@@ -253,27 +260,26 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                     OccurredOnTimeStamp = long.Parse(msgElement.GetAttribute("timestamp"))
                 };
 
-                messages.Add(message);
+                Messages.Add(message);
             }
         }
 
         /// <summary>
         /// Confirms all messages and resets the global list of system messages
         /// </summary>
-        public void SetMessages()
+        /// <exception cref="HMApiException"><see cref="HMApiWrapper"/> is not initialized</exception>
+        public async Task SetMessagesAsync()
         {
+            CheckInitialized();
+
             // requesting system messages list from HomeMatic XmlApi
-            XmlDocument xmlMessages = GetApiData(xmlApiMethodMessageSet);
+            await GetApiDataAsync(xmlApiMethodMessageSet);
 
-			// wait a little while
-#if NETSTANDARD1_3
-			System.Threading.Tasks.Task.Delay(250);
-#else
-			System.Threading.Thread.Sleep(250);
-#endif
+            // wait a little while
+            await Task.Delay(250);
 
-			// update messages
-			UpdateMessages();
+            // update messages
+            await UpdateMessagesAsync();
         }
 
         #endregion
@@ -284,41 +290,42 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// Triggers update of the global device list including their channels and data point or state data
         /// <param name="justQueryForFastUpdateDevices">Tells the method to just run an short update of an important set of devices</param>
         /// </summary>
-        public void UpdateStates(bool justQueryForFastUpdateDevices)
+        /// <exception cref="HMApiException"><see cref="HMApiWrapper"/> is not initialized</exception>
+        public async Task UpdateStatesAsync(bool justQueryForFastUpdateDevices)
         {
-            if(justQueryForFastUpdateDevices)
+            CheckInitialized();
+
+            if (justQueryForFastUpdateDevices)
             {
-                UpdateStates();
+                await UpdateStatesAsync();
                 return;
             }
 
             // requesting states list from HomeMatic XmlApi
-            XmlDocument xmlStates = GetApiData(xmlApiMethodStateAll);
-            
+            var xmlStates = await GetApiDataAsync(xmlApiMethodStateAll);
+
             if (xmlStates != null)
-            {
                 UpdateStates(xmlStates);
-            }
         }
 
         /// <summary>
-        /// Triggers update of the global device list just for devices listed in fast update devices 
-        /// collection, including their channels and data point or state data. If no fast update devices 
+        /// Triggers update of the global device list just for devices listed in fast update devices
+        /// collection, including their channels and data point or state data. If no fast update devices
         /// are defined, we do a regular states update.
         /// </summary>
-        private void UpdateStates()
+        private async Task UpdateStatesAsync()
         {
-            string queryIds = String.Empty;
+            var queryIds = string.Empty;
 
-            foreach(string address in fastUpdateDevices)
+            foreach (var address in FastUpdateDevices)
             {
                 queryIds += GetInternalIdByAddress(address) + ",";
             }
 
-            if (!String.IsNullOrWhiteSpace(queryIds))
+            if (!string.IsNullOrWhiteSpace(queryIds))
             {
                 // requesting states list from HomeMatic XmlApi
-                XmlDocument xmlStates = GetApiData(xmlApiMethodStateSingle, "device_id", queryIds);
+                var xmlStates = await GetApiDataAsync(xmlApiMethodStateSingle, "device_id", queryIds);
 
                 if (xmlStates != null)
                 {
@@ -328,7 +335,7 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             }
 
             // do a regular states update if not run into single update branch above
-            UpdateStates(false);
+            await UpdateStatesAsync(false);
         }
 
         /// <summary>
@@ -337,7 +344,10 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <param name="xmlStates">XML data for states</param>
         private void UpdateStates(XmlDocument xmlStates)
         {
-            string currentElementPlain = String.Empty;
+            if (xmlStates?.DocumentElement == null)
+                return;
+
+            var currentElementPlain = string.Empty;
 
             // iterating devices
             foreach (XmlElement devElement in xmlStates.DocumentElement.ChildNodes)
@@ -346,93 +356,98 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
                 {
                     currentElementPlain = devElement.InnerXml.Length >= 100 ? devElement.InnerXml.Substring(0, 100) : devElement.InnerXml;
 
-                    int devIseId = int.Parse(devElement.GetAttribute("ise_id"));
+                    var devIseId = int.Parse(devElement.GetAttribute("ise_id"));
                     // looking for existing device
                     HMDevice device;
 
-                    try { device = devices.First(d => devIseId == d.InternalId); }
-                    catch { device = null; }
-
-                    if (device != null)
+                    try
                     {
+                        device = Devices.First(d => devIseId == d.InternalId);
+                    }
+                    catch
+                    {
+                        continue;
+                    }
 
-                        // iterating channels
-                        foreach (XmlElement chanElement in devElement.ChildNodes)
+                    // iterating channels
+                    foreach (XmlElement chanElement in devElement.ChildNodes)
+                    {
+                        try
                         {
+                            currentElementPlain = chanElement.InnerXml.Length >= 100 ? chanElement.InnerXml.Substring(0, 100) : chanElement.InnerXml;
+
+                            var chanIseId = int.Parse(chanElement.GetAttribute("ise_id"));
+
+                            // looking for existing channel
+                            HMDeviceChannel channel;
+
                             try
                             {
-                                currentElementPlain = chanElement.InnerXml.Length >= 100 ? chanElement.InnerXml.Substring(0, 100) : chanElement.InnerXml;
-
-                                int chanIseId = int.Parse(chanElement.GetAttribute("ise_id"));
-
-                                // looking for existing channel
-                                HMDeviceChannel channel;
-
-                                try { channel = device.Channels.First(c => chanIseId == c.InternalId); }
-                                catch { channel = null; }
-
-                                if (channel == null && String.Concat(chanElement.GetAttribute("name")).Contains(device.Name + ":0"))
-                                {
-                                    // create new channel and add to device
-                                    channel = new HMDeviceChannel()
-                                    {
-                                        Name = "DeviceRoot",
-                                        Address = String.Concat(device.Address, ":0"),
-                                        InternalId = int.Parse(chanElement.GetAttribute("ise_id")),
-                                    };
-                                    device.AddChannel(channel);
-                                }
-                                else if (channel == null)
-                                {
-                                    // create new channel and add to device
-                                    channel = new HMDeviceChannel()
-                                    {
-                                        Name = chanElement.GetAttribute("name"),
-                                        Address = chanElement.GetAttribute("address"),
-                                        InternalId = int.Parse(chanElement.GetAttribute("ise_id")),
-                                    };
-                                    device.AddChannel(channel);
-                                }
-                                else
-                                {
-                                    // clear all data points to create new
-                                    channel.DataPoints.Clear();
-                                }
-
-                                // iterating data points
-                                if (channel != null)
-                                {
-                                    foreach (XmlElement pointElement in chanElement.ChildNodes)
-                                    {
-                                        try
-                                        {
-                                            HMDeviceDataPoint dataPoint = new HMDeviceDataPoint()
-                                            {
-                                                InternalId = int.Parse(pointElement.GetAttribute("ise_id")),
-                                                InternalIdParent = chanIseId,
-                                                Type = pointElement.GetAttribute("type"),
-                                                LastUpdateTimeStamp = long.Parse(pointElement.GetAttribute("timestamp")),
-                                                ValueString = pointElement.GetAttribute("value"),
-                                                ValueType = pointElement.GetAttribute("valuetype"),
-                                                ValueUnit = pointElement.GetAttribute("valueunit")
-                                            };
-                                            channel.AddDataPoint(dataPoint.Type, dataPoint);
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            WriteInternalLog("DataPoint failed: " + ex.Message, true);
-                                            // well, maybe there was an datapoint that could not be created 
-                                            // due to missing information
-                                        }
-                                    }
-                                }
+                                channel = device.Channels.First(c => chanIseId == c.InternalId);
                             }
-                            catch (Exception ex)
+                            catch
                             {
-                                WriteInternalLog("Channel failed: " + ex.Message + "\n  --- " + currentElementPlain, true);
-                                // well, maybe there was an channel that is not listed in device list
-                                // no problem, we'll just ignore it at this point
+                                channel = null;
                             }
+
+                            if (channel == null && chanElement.GetAttribute("name").Contains(device.Name + ":0"))
+                            {
+                                // create new channel and add to device
+                                channel = new HMDeviceChannel()
+                                {
+                                    Name = "DeviceRoot",
+                                    Address = string.Concat(device.Address, ":0"),
+                                    InternalId = int.Parse(chanElement.GetAttribute("ise_id")),
+                                };
+                                device.AddChannel(channel);
+                            }
+                            else if (channel == null)
+                            {
+                                // create new channel and add to device
+                                channel = new HMDeviceChannel()
+                                {
+                                    Name = chanElement.GetAttribute("name"),
+                                    Address = chanElement.GetAttribute("address"),
+                                    InternalId = int.Parse(chanElement.GetAttribute("ise_id")),
+                                };
+                                device.AddChannel(channel);
+                            }
+                            else
+                            {
+                                // clear all data points to create new
+                                channel.DataPoints.Clear();
+                            }
+
+                            // iterating data points
+                            foreach (XmlElement pointElement in chanElement.ChildNodes)
+                            {
+                                try
+                                {
+                                    var dataPoint = new HMDeviceDataPoint
+                                    {
+                                        InternalId = int.Parse(pointElement.GetAttribute("ise_id")),
+                                        InternalIdParent = chanIseId,
+                                        Type = pointElement.GetAttribute("type"),
+                                        LastUpdateTimeStamp = long.Parse(pointElement.GetAttribute("timestamp")),
+                                        ValueString = pointElement.GetAttribute("value"),
+                                        ValueType = pointElement.GetAttribute("valuetype"),
+                                        ValueUnit = pointElement.GetAttribute("valueunit")
+                                    };
+                                    channel.AddDataPoint(dataPoint.Type, dataPoint);
+                                }
+                                catch (Exception ex)
+                                {
+                                    WriteInternalLog("DataPoint failed: " + ex.Message, true);
+                                    // well, maybe there was an datapoint that could not be created
+                                    // due to missing information
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            WriteInternalLog("Channel failed: " + ex.Message + "\n  --- " + currentElementPlain, true);
+                            // well, maybe there was an channel that is not listed in device list
+                            // no problem, we'll just ignore it at this point
                         }
                     }
                 }
@@ -449,101 +464,37 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// Triggers update of the global device list just for a single device by given HM element
         /// including its channels and data point or state data.
         /// </summary>
-        private void UpdateState(HMBase hmElement)
+        private async Task UpdateStateAsync(HMBase hmElement)
         {
-            if (hmElement != null)
+            if (hmElement == null)
+                return;
+            // to update a single state its important to know what type we have to update
+            var param = string.Empty;
+            var iseId = 0;
+
+            switch (hmElement.GetType().Name)
             {
-                // to update a single state its important to know what type we have to update
-                string param = String.Empty;
-                int iseId = 0;
+                case "HMDevice":
+                    param = "device_id";
+                    iseId = hmElement.InternalId;
+                    break;
 
-                switch (hmElement.GetType().Name)
-                {
-                    case "HMDevice":
-                        param = "device_id";
-                        iseId = hmElement.InternalId;
-                        break;
+                case "HMDeviceChannel":
+                    param = "channel_id";
+                    iseId = hmElement.InternalId;
+                    break;
 
-                    case "HMDeviceChannel":
-                        param = "channel_id";
-                        iseId = hmElement.InternalId;
-                        break;
-
-                    case "HMDeviceDataPoint":
-                        param = "channel_id";
-                        iseId = ((HMDeviceDataPoint)hmElement).InternalIdParent;
-                        break;
-
-                    default:
-                        break;
-                }
-
-                // requesting states list from HomeMatic XmlApi
-                XmlDocument xmlStates = GetApiData(xmlApiMethodStateSingle, param, iseId.ToString());
-
-                if (xmlStates != null)
-                {
-                    UpdateStates(xmlStates);
-                    return;
-                }
+                case "HMDeviceDataPoint":
+                    param = "channel_id";
+                    iseId = ((HMDeviceDataPoint) hmElement).InternalIdParent;
+                    break;
             }
-        }
 
-        /// <summary>
-        /// Sets the state of a data point by address of the data point
-        /// </summary>
-        /// <param name="address">Address of channel</param>
-        /// <param name="value">The new value the needs to be assigned to the data point</param>
-        /// <returns>Result of operation; true if everything is okay</returns>
-        /// <remarks>Updating of set element is not supported (see deprecated message)!</remarks>
-        [Obsolete("Please use the SetState(HMBase, object) or the SetStateByAddress(string, string, object) method!", false)]
-        public bool SetState(string address, object value)
-        {
-            // We're just able to set the primary datapoint because we're not addressing the datapoint by key
-            return SetState(GetInternalIdByAddress(address), value);
-        }
+            // requesting states list from HomeMatic XmlApi
+            var xmlStates = await GetApiDataAsync(xmlApiMethodStateSingle, param, iseId.ToString());
 
-        /// <summary>
-        /// Sets the state of a data point by internal ID of the data point
-        /// </summary>
-        /// <param name="internalId">IseId of the data point to set</param>
-        /// <param name="value">The new value the needs to be assigned to the data point</param>
-        /// <returns>Result of operation; true if everything is okay</returns>
-        /// <remarks>Updating of set element is not supported (see deprecated message)!</remarks>
-        [Obsolete("Please use the SetState(HMBase, object) or the SetStateByAddress(string, string, object) method!", false)]
-        public bool SetState(int internalId, object value)
-        {
-            try
-            {
-                if(internalId <= 0 || value == null)
-                {
-                    return false;
-                }
-
-                string iseId = internalId.ToString();
-                string stringRepresentationOfValue = Convert.ToString(value).ToLower();
-
-                // sending change of state request to HomeMatic XmlApi
-                XmlDocument xmlSetStates = GetApiData(xmlApiMethodStateSet, "ise_id", iseId, "new_value", stringRepresentationOfValue);
-
-                // checking results
-                XmlNode resultNode = xmlSetStates.DocumentElement.FirstChild;
-                {
-                    if(resultNode.Name == "changed" && resultNode.Attributes["id"].Value == iseId && resultNode.Attributes["new_value"].Value == stringRepresentationOfValue)
-                    {
-                        // No internal updating implemented because we're just aware of the internal id but we did not know if it is a channel or datapoint
-                        return true;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
-            }
-            catch 
-            {
-                return false;
-            }
+            if (xmlStates != null)
+                UpdateStates(xmlStates);
         }
 
         /// <summary>
@@ -552,37 +503,34 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <param name="hmElement">An HMBase object that represents a channel or a data point</param>
         /// <param name="value">The new value the needs to be assigned to the data point</param>
         /// <returns>Result of operation; true if everything is okay</returns>
-        public bool SetState(HMBase hmElement, object value)
+        /// <exception cref="HMApiException"><see cref="HMApiWrapper"/> is not initialized</exception>
+        public async Task<bool> SetStateAsync(HMBase hmElement, object value)
         {
+            CheckInitialized();
+
             try
             {
                 if (hmElement == null || !(hmElement.GetType() == typeof(HMDeviceChannel) || hmElement.GetType() == typeof(HMDeviceDataPoint)))
-                {
                     return false;
-                }
 
-                string internalId = hmElement.InternalId.ToString();
+                var internalId = hmElement.InternalId.ToString();
 
-                NumberFormatInfo numFormat = new NumberFormatInfo();
-                numFormat.NumberDecimalSeparator = ".";
-                string stringRepresentationOfValue = Convert.ToString(value, numFormat).ToLower();
+                var numFormat = new NumberFormatInfo {NumberDecimalSeparator = "."};
+                var stringRepresentationOfValue = Convert.ToString(value, numFormat)?.ToLower() ?? "null";
 
                 // sending change of state request to HomeMatic XmlApi
-                XmlDocument xmlSetStates = GetApiData(xmlApiMethodStateSet, "ise_id", internalId, "new_value", stringRepresentationOfValue);
+                var xmlSetStates = await GetApiDataAsync(xmlApiMethodStateSet, "ise_id", internalId, "new_value", stringRepresentationOfValue);
 
                 // checking results
-                XmlNode resultNode = xmlSetStates.DocumentElement.FirstChild;
-                {
-                    if (resultNode.Name == "changed" && resultNode.Attributes["id"].Value == internalId && resultNode.Attributes["new_value"].Value == stringRepresentationOfValue)
-                    {
-                        UpdateState(hmElement);
-                        return true;
-                    }
-                    else
-                    {
-                        return false;
-                    }
-                }
+                var resultNode = xmlSetStates?.DocumentElement?.FirstChild;
+                if (resultNode == null)
+                    return false;
+
+                if (resultNode.Name != "changed" || resultNode.Attributes?["id"].Value != internalId || resultNode.Attributes["new_value"].Value != stringRepresentationOfValue)
+                    return false;
+
+                await UpdateStateAsync(hmElement);
+                return true;
             }
             catch
             {
@@ -595,23 +543,43 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// </summary>
         /// <param name="address">Full address of the desired channel</param>
         /// <param name="key">Key or typename of the desired data point</param>
-        /// <param name="Value">The new value the needs to be assigned to the data point</param>
+        /// <param name="value">The new value the needs to be assigned to the data point</param>
         /// <returns>Result of operation; true if everything is okay</returns>
-        public bool SetStateByAddress(string address, string key, object Value)
+        /// <exception cref="HMApiException"><see cref="HMApiWrapper"/> is not initialized</exception>
+        public async Task<bool> SetStateByAddressAsync(string address, string key, object value)
         {
+            CheckInitialized();
+
             try
             {
-                if (String.IsNullOrWhiteSpace(address) || String.IsNullOrWhiteSpace(key) || Value == null)
-                {
+                if (string.IsNullOrWhiteSpace(address) || string.IsNullOrWhiteSpace(key) || value == null)
                     return false;
-                }
 
-                return SetState(GetDataByAddress(address, key), Value);
+                return await SetStateAsync(GetDataByAddress(address, key), value);
             }
             catch
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Query CCU for state of given channel
+        /// </summary>
+        /// <param name="address">Full address of the desired channel</param>
+        /// <returns>The channel object including the current state</returns>
+        /// <exception cref="HMApiException"><see cref="HMApiWrapper"/> is not initialized</exception>
+        public async Task<HMDeviceChannel> GetChannelStateAsync(string address)
+        {
+            // Update state
+            var device = GetDeviceByAddress(address);
+            if (device == null)
+                return null;
+
+            await UpdateStateAsync(device);
+
+            // Return channel
+            return GetChannelByAddress(address);
         }
 
         #endregion
@@ -625,33 +593,8 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// </summary>
         /// <param name="apiMethod">Name of the method to call</param>
         /// <returns>XML document containing the requested data</returns>
-        private XmlDocument GetApiData(string apiMethod)
-        {
-            XmlDocument result = new XmlDocument();
-
-            if (hmUrl != null)
-            {
-#if NETSTANDARD1_3
-				string strErg = null;
-				using(System.Net.Http.HttpClient apiClient = new System.Net.Http.HttpClient()) {
-					strErg= apiClient.GetStringAsync($"{hmUrl}{xmlApiDefaultPath}/{apiMethod}.cgi").ConfigureAwait(false).GetAwaiter().GetResult();
-				}
-				if(strErg != null) {
-					result.LoadXml(strErg);
-				}
-#else
-				using(WebClient apiClient = new WebClient()) {
-					result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi", hmUrl, xmlApiDefaultPath, apiMethod)));
-				}
-#endif
-				if (result != null && result.DocumentElement != null)
-                {
-                    return result;
-                }
-            }
-
-            return null;
-        }
+        private Task<XmlDocument> GetApiDataAsync(string apiMethod)
+            => HmUrl == null ? null : FetchXmlFromUriAsync($"{HmUrl}{xmlApiDefaultPath}/{apiMethod}.cgi");
 
         /// <summary>
         /// Request an XML based API document from HomeMatic Xml Api with one parameter
@@ -660,33 +603,8 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <param name="parameter">Name of the parameter to attach</param>
         /// <param name="parameterValue">Value of the parameter to attach</param>
         /// <returns>XML document containing the requested data</returns>
-        private XmlDocument GetApiData(string apiMethod, string parameter, string parameterValue)
-        {
-            XmlDocument result = new XmlDocument();
-
-            if (hmUrl != null)
-            {
-#if NETSTANDARD1_3
-				string strErg = null;
-				using(System.Net.Http.HttpClient apiClient = new System.Net.Http.HttpClient()) {
-					strErg = apiClient.GetStringAsync($"{hmUrl}{xmlApiDefaultPath}/{apiMethod}.cgi?{parameter}={parameterValue}").ConfigureAwait(false).GetAwaiter().GetResult();
-				}
-				if(strErg != null) {
-					result.LoadXml(strErg);
-				}
-#else
-				using(WebClient apiClient = new WebClient()) {
-					result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi?{3}={4}", hmUrl, xmlApiDefaultPath, apiMethod, parameter, parameterValue)));
-				}
-#endif
-				if (result != null && result.DocumentElement != null)
-                {
-                    return result;
-                }
-            }
-
-            return null;
-        }
+        private Task<XmlDocument> GetApiDataAsync(string apiMethod, string parameter, string parameterValue)
+            => HmUrl == null ? null : FetchXmlFromUriAsync($"{HmUrl}{xmlApiDefaultPath}/{apiMethod}.cgi?{parameter}={parameterValue}");
 
         /// <summary>
         /// Request an XML based API document from HomeMatic Xml Api with two parameters
@@ -697,33 +615,29 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <param name="parameter2">Name of the parameter #2 to attach</param>
         /// <param name="parameterValue2">Value of the parameter #2 to attach</param>
         /// <returns>XML document containing the requested data</returns>
-        private XmlDocument GetApiData(string apiMethod, string parameter1, string parameterValue1, string parameter2, string parameterValue2)
+        private Task<XmlDocument> GetApiDataAsync(string apiMethod, string parameter1, string parameterValue1, string parameter2, string parameterValue2)
+            => HmUrl == null ? null : FetchXmlFromUriAsync($"{HmUrl}{xmlApiDefaultPath}/{apiMethod}.cgi?{parameter1}={parameterValue1}&{parameter2}={parameterValue2}");
+
+        /// <summary>
+        /// Fetch content from given url and parse to xml
+        /// </summary>
+        /// <param name="uri"></param>
+        /// <returns></returns>
+        private async Task<XmlDocument> FetchXmlFromUriAsync(string uri)
         {
-            XmlDocument result = new XmlDocument(); 
+            if (string.IsNullOrEmpty(uri))
+                return null;
 
-            if (hmUrl != null)
-            {
-#if NETSTANDARD1_3
-				string strErg = null;
-				using(System.Net.Http.HttpClient apiClient = new System.Net.Http.HttpClient()) {
-					strErg = apiClient.GetStringAsync($"{hmUrl}{xmlApiDefaultPath}/{apiMethod}.cgi?{parameter1}={parameterValue1}&{parameter2}={parameterValue2}")
-						.ConfigureAwait(false).GetAwaiter().GetResult();
-				}
-				if(strErg != null) {
-					result.LoadXml(strErg);
-				}
-#else
-				using(WebClient apiClient = new WebClient()) {
-					result.LoadXml(apiClient.DownloadString(String.Format("{0}{1}/{2}.cgi?{3}={4}&{5}={6}", hmUrl, xmlApiDefaultPath, apiMethod, parameter1, parameterValue1, parameter2, parameterValue2)));
-				}
-#endif
-				if (result != null && result.DocumentElement != null)
-                {
-                    return result;
-                }
-            }
+            var result = new XmlDocument();
 
-            return null;
+            if (HmUrl == null)
+                return null;
+
+            var plainTextResponse = await Client.GetStringAsync(uri);
+
+            result.LoadXml(plainTextResponse);
+
+            return result.DocumentElement != null ? result : null;
         }
 
         /// <summary>
@@ -735,14 +649,8 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             try
             {
-                if (address.Contains(":"))
-                {
-                    return devices.First(d => d.Address == (address.Substring(0, address.IndexOf(":"))));
-                }
-                else
-                {
-                    return devices.First(d => d.Address == address);
-                }
+                var addressParts = address.Split(':');
+                return Devices.First(d => d.Address == addressParts[0]);
             }
             catch (Exception)
             {
@@ -759,14 +667,13 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         {
             try
             {
-                if (address.Contains(":"))
-                {
-                    HMDevice device = GetDeviceByAddress(address);
-                    if (device != null && device.Channels.Count > 0)
-                    {
-                        return device.Channels.First(c => c.Address == address);
-                    }
-                }
+                if (!address.Contains(":"))
+                    return null;
+
+                var device = GetDeviceByAddress(address);
+
+                if (device != null && device.Channels.Count > 0)
+                    return device.Channels.First(c => c.Address == address);
 
                 return null;
             }
@@ -780,17 +687,16 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// Gets the device channels datapoint by given HomeMatic device or channel address and data value type name
         /// </summary>
         /// <param name="address"></param>
-        /// <param name="valueType">The name of the value type (STATE, LOWBAT, MOTION, etc.)</param>
+        /// <param name="valueTypeName">The name of the value type (STATE, LOWBAT, MOTION, etc.)</param>
         /// <returns>Data point</returns>
         public HMDeviceDataPoint GetDataByAddress(string address, string valueTypeName)
         {
             try
             {
-                HMDeviceChannel channel = GetChannelByAddress(address);
+                var channel = GetChannelByAddress(address);
+
                 if (channel != null && channel.DataPoints.ContainsKey(valueTypeName))
-                {
                     return channel.DataPoints[valueTypeName];
-                }
 
                 return null;
             }
@@ -807,33 +713,27 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <returns>Internal ID (iseId); if it is -1 we wasn't able to find a matching device or channel</returns>
         private int GetInternalIdByAddress(string address)
         {
-            int result = -1;
+            var result = -1;
 
             try
             {
-                bool searchChannels = address.Contains(":");
+                var searchChannels = address.Contains(":");
 
-                HMDevice device = null;
                 HMDeviceChannel channel = null;
 
-                device = devices.First(d => address.StartsWith(d.Address));
+                var device = Devices.FirstOrDefault(d => address.StartsWith(d.Address));
+                if (device == null || string.IsNullOrEmpty(device.Address))
+                    return result;
 
-                if (searchChannels && device != null)
-                {
+                if (searchChannels)
                     channel = device.Channels.First(c => c.Address == address);
-                }
 
-                if (device != null && !String.IsNullOrEmpty(device.Address))
-                {
-                    result = device.InternalId;
+                result = device.InternalId;
 
-                    if (channel != null && !String.IsNullOrEmpty(channel.Address))
-                    {
-                        result = channel.InternalId;
-                    }
-                }
+                if (channel != null && !string.IsNullOrEmpty(channel.Address))
+                    result = channel.InternalId;
             }
-            catch(Exception)
+            catch (Exception)
             {
                 // Seems that we have a problem finding this id in internal data so we let it go and pass a minus-one to indicate our disability
             }
@@ -842,36 +742,38 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         }
 
         /// <summary>
-        /// Adds devices by address to the list for single updates, which will be performed faster 
-        /// by requesting them by single call than getting all status values 
+        /// Adds devices by address to the list for single updates, which will be performed faster
+        /// by requesting them by single call than getting all status values
         /// </summary>
         /// <param name="address"></param>
         public void FastUpdateDeviceSetup(string address)
         {
-            if (!String.IsNullOrWhiteSpace(address))
-            {
-                if (address.Contains(":"))
-                {
-                    fastUpdateDevices.Add(address.Substring(0, address.IndexOf(":")));
-                }
-                else
-                {
-                    fastUpdateDevices.Add(address);
-                }
-            }
+            if (string.IsNullOrWhiteSpace(address))
+                return;
+
+            var addressParts = address.Split(':');
+            FastUpdateDevices.Add(addressParts[0]);
         }
 
         /// <summary>
         /// Clears the list for fast update devices
         /// </summary>
         public void FastUpdateDevicesClear()
+            => FastUpdateDevices.Clear();
+
+        /// <summary>
+        /// Checks if the class is initialized
+        /// </summary>
+        /// <exception cref="HMApiException"><see cref="HMApiWrapper"/> is not initialized</exception>
+        private void CheckInitialized()
         {
-            fastUpdateDevices.Clear();
+            if (!_initialized)
+                throw new HMApiException($"{nameof(HMApiWrapper)} is not initialized. Call {nameof(InitializeAsync)} first", "NOT_INITIALIZED");
         }
 
-#endregion
+        #endregion
 
-#region Common helper
+        #region Common helper
 
         /// <summary>
         /// Converts UNIX timestamp to valid DateTime
@@ -879,20 +781,11 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
         /// <param name="timeStamp">UNIX timestamp</param>
         /// <returns>DateTime object representing the given UNIX timestamp</returns>
         public static DateTime TimeStampToDateTime(long timeStamp)
-        {
-            if (timeStamp > 1)
-            {
-                return (new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Local)).AddSeconds(timeStamp);
-            }
-
-            return DateTime.MinValue;
-        }
+            => timeStamp > 1 ? new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Local).AddSeconds(timeStamp) : DateTime.MinValue;
 
         private void WriteInternalLog(string message, bool isError)
-        {
-            log.Add(String.Format("{0}-[{1}]: {2}", DateTime.Now, isError ? "ERR" : "INF", message));
-        }
+            => log.Add($"{DateTime.Now}-[{(isError ? "ERR" : "INF")}]: {message}");
 
-#endregion
+        #endregion
     }
 }
