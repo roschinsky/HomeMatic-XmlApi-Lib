@@ -563,6 +563,25 @@ namespace TRoschinsky.Lib.HomeMaticXmlApi
             }
         }
 
+        /// <summary>
+        /// Query CCU for state of given channel
+        /// </summary>
+        /// <param name="address">Full address of the desired channel</param>
+        /// <returns>The channel object including the current state</returns>
+        /// <exception cref="HMApiException"><see cref="HMApiWrapper"/> is not initialized</exception>
+        public async Task<HMDeviceChannel> GetChannelStateAsync(string address)
+        {
+            // Update state
+            var device = GetDeviceByAddress(address);
+            if (device == null)
+                return null;
+
+            await UpdateStateAsync(device);
+
+            // Return channel
+            return GetChannelByAddress(address);
+        }
+
         #endregion
 
         #endregion
